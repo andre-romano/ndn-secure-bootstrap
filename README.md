@@ -35,18 +35,24 @@ sudo apt-get -y install ./jdk-21_linux-x64_bin.deb
 wget -O bonnmotion-3.0.1.zip https://sys.cs.uos.de/bonnmotion/src/bonnmotion-3.0.1.zip
 unzip bonnmotion-3.0.1.zip
 cd bonnmotion-3.0.1
-bash install.sh
+chmod +rx *.sh
+./install.sh
 cp bin/bm ~/.local/bin
+chmod +rx ~/.local/bin/*
 ```
 
 ### Setup
 
-Clone this repository within "ns-3/scratch" folder:
+Execute the following:
 ```bash
-git clone git@github.com:andre-romano/ndn-secure-bootstrap.git
+cd ~/ndnSIM/ns-3/scratch
+git clone git@github.com:andre-romano/ndn-secure-bootstrap.git ndn-secure-bootstrap
+chmod +rx -R ndn-secure-bootstrap/*
 ```
 
-Run the experiments with the command:
+### Run experiments
+
+Execute the following:
 
 ```bash
 cd ~/ndnSIM/ns-3/scratch/ndn-secure-bootstrap
