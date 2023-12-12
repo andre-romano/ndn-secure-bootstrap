@@ -41,13 +41,18 @@ cp bin/bm ~/.local/bin
 
 ### Setup
 
-Clone this repository within "ns-3/scratch" folder. 
+Clone this repository within "ns-3/scratch" folder:
+```bash
+git clone git@github.com:andre-romano/ndn-secure-bootstrap.git
+```
+
 Run the experiments with the command:
 
 ```bash
-NS_LOG=* ./waf --run="sim_bootsec"
+cd ~/ndnSIM/ns-3/scratch/ndn-secure-bootstrap
+./run.sh
 ```
 
-To print help and other parameters, please type ' ./waf --run="sim_bootsec -h" '
+You can pass parameters to "run.sh", please check the script for more info
 
 

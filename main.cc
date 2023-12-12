@@ -130,7 +130,7 @@ namespace ns3 {
         uint32_t nConsumers    = 2;
         uint32_t nProducers    = 1;
         size_t nCsSize         = 1000;
-        cmd.AddValue("nSimDuration", "Simulation duration", nSimDuration);
+        cmd.AddValue("nSimDuration", "Simulation duration ", nSimDuration);
         cmd.AddValue("nTraceFile", "Ns2 movement trace file", nTraceFile);
         cmd.AddValue("nInitialEnergy", "Initial energy of the nodes", nInitialEnergy);
         cmd.AddValue("nPktFreq", "Interest send frequency", nPktFreq);
