@@ -1,0 +1,17 @@
+**/*.o
+**/*.dat
+**/*.data
+**/*.log
+**/*.pdf
+**/*.png
+**/*.jpg
+**/*.eps
+**/*.txt
+**/*.gz
+**/*.bak
+**/*.ns_movements
+**/*.ns_params
+results/*.params
+results/_*
+results/[0-9]*
+results/shared
