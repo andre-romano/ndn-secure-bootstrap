@@ -46,6 +46,10 @@
 #include "ns3/ndnSIM/model/ndn-l3-protocol.hpp"
 #include "ns3/ndnSIM/model/ndn-net-device-transport.hpp"
 
+// ndn-cxx
+#include "ns3/ndnSIM/ndn-cxx/security/key-chain.hpp"
+#include "ns3/ndnSIM/ndn-cxx/util/io.hpp"
+
 // custom and auxiliary
 #include "custom-consumer-boot.hpp"
 #include "custom-producer-boot.hpp"
@@ -79,7 +83,7 @@ namespace ns3 {
         opts.allowFragmentation     = true;
         opts.allowReassembly        = true;
         opts.allowCongestionMarking = true;
-        NS_LOG_DEBUG("+" << Simulator::Now().GetSeconds() << " " << node->GetId() << " - CREATING WIFI NETDEV FACE");
+        // NS_LOG_DEBUG("CREATING WIFI NETDEV FACE");
 
         auto linkService = make_unique<::nfd::face::GenericLinkService>(opts);
         // auto linkService = make_unique<::nfd::face::LinkService>(opts);
@@ -105,8 +109,8 @@ namespace ns3 {
         face->setMetric(1);
 
         ndn->addFace(face);
-        NS_LOG_LOGIC("Node " << node->GetId() << ": added Face as face #" << face->getLocalUri()
-                             << " - remoteURI = " << face->getRemoteUri() << " - linkType " << linkType);
+        // NS_LOG_LOGIC("Node " << node->GetId() << ": added Face as face #" << face->getLocalUri()
+        //                      << " - remoteURI = " << face->getRemoteUri() << " - linkType " << linkType);
 
         return face;
     }
@@ -120,18 +124,22 @@ namespace ns3 {
 
         // get commands from user
         CommandLine cmd;
-        uint32_t nSimDuration  = 11;
-        std::string nTraceFile = "results/mobility-trace.ns_movements";
-        double nInitialEnergy  = 20.0;
-        double nPktFreq        = 20.0;
-        std::string nLifetime  = "2s";
-        double nFreshness      = 2.0;
-        uint32_t nNodes        = 20;
-        uint32_t nConsumers    = 2;
-        uint32_t nProducers    = 1;
-        size_t nCsSize         = 1000;
+        uint32_t nSimDuration        = 11;
+        std::string nTraceFile       = "results/mobility-trace.ns_movements";
+        std::string nValidatorConf   = "scratch/sim_bootsec/config/validator.conf";
+        std::string nTrustAnchorCert = "scratch/sim_bootsec/config/trustanchor.cert";
+        double nInitialEnergy        = 20.0;
+        double nPktFreq              = 20.0;
+        std::string nLifetime        = "2s";
+        double nFreshness            = 2.0;
+        uint32_t nNodes              = 20;
+        uint32_t nConsumers          = 2;
+        uint32_t nProducers          = 1;
+        size_t nCsSize               = 1000;
         cmd.AddValue("nSimDuration", "Simulation duration ", nSimDuration);
         cmd.AddValue("nTraceFile", "Ns2 movement trace file", nTraceFile);
+        cmd.AddValue("nValidatorConf", "Validator config filename", nValidatorConf);
+        cmd.AddValue("nTrustAnchorCert", "Trust anchor certificate filename", nTrustAnchorCert);
         cmd.AddValue("nInitialEnergy", "Initial energy of the nodes", nInitialEnergy);
         cmd.AddValue("nPktFreq", "Interest send frequency", nPktFreq);
         cmd.AddValue("nLifetime", "NDN Interest lifetime", nLifetime);
@@ -148,6 +156,7 @@ namespace ns3 {
         //////////////////////
         //     WIRELESS
         //////////////////////
+        NS_LOG_INFO("Setup Wi-Fi Stack ...");
         WifiHelper wifi;
         wifi.SetStandard(WIFI_PHY_STANDARD_80211a);
         wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager", "DataMode", wifiRate);
@@ -174,7 +183,7 @@ namespace ns3 {
         //////////////////////
         //     MOBILITY
         //////////////////////
-
+        NS_LOG_INFO("Setup Mobility Model ...");
         const int MAP_SIZE = 200;  // map size (in meters)
         MobilityHelper mobility;
         mobility.SetPositionAllocator(
@@ -191,6 +200,7 @@ namespace ns3 {
         //////////////////////
         //     ENERGY MODEL
         //////////////////////
+        NS_LOG_INFO("Setup Energy Model ...");
         /* energy source */
         BasicEnergySourceHelper basicSourceHelper;
         // configure energy source - DEAULT IS 10.0
@@ -203,6 +213,7 @@ namespace ns3 {
         //////////////////////
         //     NDN STACK
         //////////////////////
+        NS_LOG_INFO("Setup NDN Stack ...");
         ndn::StackHelper ndnHelper;
         // ndnHelper.AddNetDeviceFaceCreateCallback (WifiNetDevice::GetTypeId (), MakeCallback(MyNetDeviceFaceCallback));
         ndnHelper.setPolicy("nfd::cs::lru");
@@ -213,6 +224,7 @@ namespace ns3 {
         //////////////////////
         //     NODES
         //////////////////////
+        NS_LOG_INFO("Setup NS3 Nodes (consumers, fwd, producers) ...");
         NodeContainer nodes, consumers, producers, forwarders;
         producers.Create(nProducers);
         consumers.Create(nConsumers);
@@ -227,6 +239,7 @@ namespace ns3 {
         //////////////////////
 
         // 1. Install Wifi
+        NS_LOG_INFO("Installing Wi-Fi Stack ...");
         NetDeviceContainer wifiNetDevices = wifi.Install(wifiPhyHelper, wifiMacHelper, nodes);
         NetDeviceContainer fwdNetDevices;
         for (auto fwdNode : forwarders) {
@@ -234,6 +247,7 @@ namespace ns3 {
         }
 
         // 2. Install Mobility model
+        NS_LOG_INFO("Installing Mobility Model ...");
         if (nTraceFile.empty()) {
             mobility.Install(nodes);
         } else {
@@ -244,6 +258,7 @@ namespace ns3 {
         // Config::Connect("/NodeList/*/$ns3::MobilityModel/CourseChange", MakeCallback(&CourseChange));  // monitor for chg in pos
 
         // 3. Install Energy model
+        NS_LOG_INFO("Installing Energy Model ...");
         EnergySourceContainer sources           = basicSourceHelper.Install(forwarders);
         DeviceEnergyModelContainer deviceModels = radioEnergyHelper.Install(fwdNetDevices, sources);
         // // TODO TEST CODE BELOW TO FORCE SPECIFIC NODES' SELECTION
@@ -259,23 +274,36 @@ namespace ns3 {
         // DeviceEnergyModelContainer deviceModels = radioEnergyHelper.Install(tempNetDevices, sources);
 
         // 4. Install NDN stack
-        NS_LOG_INFO("Installing NDN stack");
+        NS_LOG_INFO("Installing NDN stack ...");
         ndnHelper.Install(nodes);
 
         // 5. Set fw strategy
+        NS_LOG_INFO("Installing NDN Forwarding Strategies ...");
         // ndn::StrategyChoiceHelper::Install(producers, "/", "/localhost/nfd/strategy/multicast");
         ndn::StrategyChoiceHelper::Install(consumers, "/", "/localhost/nfd/strategy/multicast");
         ndn::StrategyChoiceHelper::Install(forwarders, "/", "/localhost/nfd/strategy/multicast");
         ndn::StrategyChoiceHelper::Install(producers, "/", "/localhost/nfd/strategy/multicast");
 
+        // 6.0 Set up Trust Anchor
+        auto rootIdentityPrefix = "/test";
+        NS_LOG_INFO("Installing Trust Anchor ...");
+        ::ndn::security::v2::KeyChain rootKeyChain("pib-memory:", "tpm-memory:");
+        auto rootIdentity = rootKeyChain.createIdentity(rootIdentityPrefix);
+        ::ndn::io::save(rootIdentity.getDefaultKey().getDefaultCertificate(), nTrustAnchorCert);
+        NS_LOG_INFO("Root Identity: " << rootIdentity);
+        NS_LOG_INFO("Root Key Type: " << rootIdentity.getDefaultKey().getKeyType());
+        NS_LOG_INFO(rootIdentity.getDefaultKey().getDefaultCertificate());
+
         // 6.1. Set up CONSUMER
         auto prefixName = "/test/prefix";
-        NS_LOG_INFO("Installing Consumer App");
-        ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
-        consumerHelper.SetPrefix(prefixName);
+        NS_LOG_INFO("Installing Consumer App ...");
+        // ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
+        ndn::AppHelper consumerHelper("CustomConsumerBoot");
         consumerHelper.SetAttribute("LifeTime", StringValue(nLifetime));
         consumerHelper.SetAttribute("Frequency", DoubleValue(nPktFreq));   // consumer CBR interest/second
         consumerHelper.SetAttribute("Randomize", StringValue("uniform"));  // consumer randomize send time
+        consumerHelper.SetAttribute("ValidatorConf", StringValue(nValidatorConf));
+        consumerHelper.SetPrefix(prefixName);
         // set random start time
         for (uint32_t i = 0; i < nConsumers; i++) {
             Ptr<UniformRandomVariable> start_time = CreateObject<UniformRandomVariable>();
@@ -283,11 +311,27 @@ namespace ns3 {
         }
 
         // 6.2. Set up PRODUCER
-        ndn::AppHelper producerHelper("ns3::ndn::Producer");
+        // ndn::AppHelper producerHelper("ns3::ndn::Producer");
+        NS_LOG_INFO("Installing Producer App ...");
+        ndn::AppHelper producerHelper("CustomProducerBoot");
+        producerHelper.SetAttribute("TrustAnchorIdentity", StringValue(rootIdentityPrefix));
+        producerHelper.SetAttribute("TrustAnchorCertFilename", StringValue(nTrustAnchorCert));
         producerHelper.SetAttribute("Freshness", TimeValue(Seconds(nFreshness)));
-        producerHelper.SetPrefix(prefixName);                             // ndn prefix
         producerHelper.SetAttribute("PayloadSize", StringValue("1480"));  // payload MTU
-        producerHelper.Install(producers).Start(Seconds(0.1));            // producers start time
+        producerHelper.SetPrefix(prefixName);                             // ndn prefix
+        auto producersApps = producerHelper.Install(producers);
+        producersApps.Start(Seconds(0.1));  // producers start time
+        for (auto it = producersApps.Begin(); it != producersApps.End(); it++) {
+            auto customProducerApp = DynamicCast<ndn::CustomProducerBoot>(*it);
+            if (!customProducerApp) continue;
+            customProducerApp->setSignCallback([&](::ndn::security::v2::Certificate cert) {
+                ::ndn::SignatureInfo signatureInfo;
+                signatureInfo.setValidityPeriod(::ndn::security::ValidityPeriod(
+                    ndn::time::system_clock::TimePoint(), ndn::time::system_clock::now() + ndn::time::days(365)));
+                rootKeyChain.sign(cert, ::ndn::security::SigningInfo(rootIdentity).setSignatureInfo(signatureInfo));
+                return cert;
+            });
+        }
 
         // 7.1. Simulate link failures (P2P links only)
         // Ptr<RateErrorModel> em = CreateObject<RateErrorModel>();
@@ -298,10 +342,12 @@ namespace ns3 {
         // }
 
         // 7.2. Monitor data traces and other interesting variables
+        NS_LOG_INFO("Installing NDN Tracers ...");
         ndn::AppDelayTracer::InstallAll("results/app-delays-trace.txt");
         ndn::L3RateTracer::InstallAll("results/rate-trace.txt", Seconds(1.0));
         ndn::CsTracer::InstallAll("results/cs-trace.txt", Seconds(1));
 
+        NS_LOG_INFO("Installing Custom Tracers ...");
         auto customTracer = CreateObject<CustomTracerBoot>();
         customTracer->SetAttribute("TraceFilename", StringValue("results/dataCustomCons.dat"));
         customTracer->SetAttribute("NodesToMonitor", NodeContainerValue(consumers));
@@ -315,6 +361,7 @@ namespace ns3 {
         customTracerProd->SetAttribute("NodesToMonitor", NodeContainerValue(producers));
 
         // 8. Start simulation
+        NS_LOG_INFO("Start simulation!");
         Simulator::Stop(Seconds(nSimDuration));
         Simulator::Run();
         Simulator::Destroy();

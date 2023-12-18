@@ -10,6 +10,9 @@
 #include "ns3/nstime.h"
 #include "ns3/simulator.h"
 
+#include "ns3/ndnSIM/ndn-cxx/security/key-chain.hpp"
+
+#include <functional>
 #include <set>
 #include <string>
 
@@ -34,9 +37,12 @@ namespace ns3 {
 
         class CustomProducerBoot : public App {
           public:
+            using signCallback = std::function<::ndn::security::v2::Certificate(::ndn::security::v2::Certificate)>;
+
+          public:
             static TypeId GetTypeId();
             CustomProducerBoot();
-            // virtual ~CustomProducerBoot();
+            ~CustomProducerBoot();
 
             // inherited from Application base class.
             virtual void StartApplication();
@@ -46,11 +52,29 @@ namespace ns3 {
             // (overridden from ndn::App) Callback that will be called when Interest arrives
             virtual void OnInterest(std::shared_ptr<const Interest> interest);
 
+            void OnInterestKey(std::shared_ptr<const ndn::Interest> interest);
+            void OnInterestContent(std::shared_ptr<const ndn::Interest> interest);
+
+            void setSignCallback(signCallback cb);
+
+          private:
+            const ::ndn::security::v2::Certificate &createCertificate();
+            void loadCertificateTrustAnchor();
+            void printKeyChain();
+
           private:
             Name m_prefix;
             Name m_postfix;
             uint32_t m_virtualPayloadSize;
             Time m_freshness;
+
+            Name m_identityPrefix;
+            Name m_trustAnchorIdentityPrefix;
+            std::string m_trustAnchorCertFilename;
+            signCallback m_signCallback;
+
+            ::ndn::security::v2::KeyChain m_keyChain;
+            ::ndn::security::SigningInfo m_signingInfo;
         };
 
     }  // namespace ndn

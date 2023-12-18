@@ -46,8 +46,8 @@ chmod +rx ~/.local/bin/*
 Execute the following:
 ```bash
 cd ~/ndnSIM/ns-3/scratch
-git clone git@github.com:andre-romano/ndn-secure-bootstrap.git ndn-secure-bootstrap
-chmod +rx -R ndn-secure-bootstrap/*
+git clone git@github.com:andre-romano/ndn-secure-bootstrap.git sim_bootsec
+chmod +rx -R sim_bootsec/*
 ```
 
 ### Run experiments

@@ -2,6 +2,8 @@
 
 #include "custom-producer-boot.hpp"
 
+#include "ns3/ndnSIM/ndn-cxx/util/io.hpp"
+
 #include "ns3/log.h"
 #include "ns3/node-list.h"
 #include "ns3/packet.h"
@@ -105,8 +107,7 @@ namespace ns3 {
         // Necessary if you are planning to use ndn::AppHelper
         NS_OBJECT_ENSURE_REGISTERED(CustomProducerBoot);
 
-        TypeId
-        CustomProducerBoot::GetTypeId() {
+        TypeId CustomProducerBoot::GetTypeId() {
             static TypeId tid = TypeId("CustomProducerBoot")
                                     .SetParent<ndn::App>()
                                     .AddConstructor<CustomProducerBoot>()
@@ -130,7 +131,22 @@ namespace ns3 {
                                                   "Freshness of data packets, if 0, then unlimited freshness",
                                                   TimeValue(Seconds(0)),
                                                   MakeTimeAccessor(&CustomProducerBoot::m_freshness),
-                                                  MakeTimeChecker());
+                                                  MakeTimeChecker())
+                                    .AddAttribute("IdentityPrefix",
+                                                  "Name of the Identity of the App",
+                                                  StringValue(""),
+                                                  MakeNameAccessor(&CustomProducerBoot::m_identityPrefix),
+                                                  MakeNameChecker())
+                                    .AddAttribute("TrustAnchorIdentity",
+                                                  "Name of the TrustAnchor Identity",
+                                                  StringValue("/"),
+                                                  MakeNameAccessor(&CustomProducerBoot::m_trustAnchorIdentityPrefix),
+                                                  MakeNameChecker())
+                                    .AddAttribute("TrustAnchorCertFilename",
+                                                  "Name of the TrustAnchor Identity",
+                                                  StringValue("./scratch/sim_bootsec/config/trustanchor.cert"),
+                                                  MakeStringAccessor(&CustomProducerBoot::m_trustAnchorCertFilename),
+                                                  MakeStringChecker());
             // .AddAttribute("IntMetrics",
             //               "Set of INT metrics to collect",
             //               IntMetricSetValue(),
@@ -144,49 +160,156 @@ namespace ns3 {
             return tid;
         }
 
-        CustomProducerBoot::CustomProducerBoot() {}
+        CustomProducerBoot::CustomProducerBoot() : m_keyChain("pib-memory:", "tpm-memory:"),
+                                                   m_signingInfo(::ndn::security::SigningInfo::SIGNER_TYPE_NULL) {
+            ::ndn::SignatureInfo signatureInfo;
+            signatureInfo.setValidityPeriod(::ndn::security::ValidityPeriod(
+                ndn::time::system_clock::TimePoint(), ndn::time::system_clock::now() + ndn::time::days(365)));
+            m_signingInfo.setSignatureInfo(signatureInfo);
+        }
 
-        void
-        CustomProducerBoot::StartApplication() {
+        CustomProducerBoot::~CustomProducerBoot() {}
+
+        void CustomProducerBoot::StartApplication() {
             NS_LOG_FUNCTION_NOARGS();
             App::StartApplication();
 
             // equivalent to setting interest filter for "/prefix" prefix
             ndn::FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
+
+            // create self-signed certificate/identity and serve it
+            auto &cert = createCertificate();
+            // loadCertificateTrustAnchor();
+            ndn::FibHelper::AddRoute(GetNode(), cert.getName(), m_face, 0);
+            NS_LOG_DEBUG("Serving Data prefix: " << m_prefix << " - Certificate: " << cert.getName());
+
+            // NS_LOG_DEBUG(cert);
+            printKeyChain();
         }
 
-        void
-        CustomProducerBoot::StopApplication() {
+        void CustomProducerBoot::StopApplication() {
             NS_LOG_FUNCTION_NOARGS();
             App::StopApplication();
         }
 
-        void
-        CustomProducerBoot::OnInterest(std::shared_ptr<const ndn::Interest> interest) {
+        void CustomProducerBoot::OnInterest(std::shared_ptr<const ndn::Interest> interest) {
             ndn::App::OnInterest(interest);  // forward call to perform app-level tracing
 
             // Note that Interests send out by the app will not be sent back to the app !
+            if (::ndn::security::v2::Certificate::isValidName(interest->getName())) {
+                OnInterestKey(interest);
+            } else {
+                OnInterestContent(interest);
+            }
+        }
 
-            auto node = ::ns3::NodeList::GetNode(::ns3::Simulator::GetContext());
+        void CustomProducerBoot::OnInterestKey(std::shared_ptr<const ndn::Interest> interest) {
+            NS_LOG_FUNCTION(interest->getName());
+
+            auto identity = m_keyChain.getPib().getIdentity(::ndn::security::v2::extractIdentityFromCertName(interest->getName()));
+            auto key      = identity.getKey(::ndn::security::v2::extractKeyNameFromCertName(interest->getName()));
+            auto cert     = key.getCertificate(interest->getName());
+
+            // to create real wire encoding
+            cert.wireEncode();
+
+            // LOGGING
+            NS_LOG_INFO("Sending Certificate packet: " << cert.getName());
+            // NS_LOG_INFO("Signature: " << cert.getSignature().getSignatureInfo());
+
+            // Call trace (for logging purposes) - no way to log certificate issuing below
+            // m_transmittedDatas(cert, this, m_face);
+            m_appLink->onReceiveData(cert);
+        }
+
+        void CustomProducerBoot::OnInterestContent(std::shared_ptr<const ndn::Interest> interest) {
+            // NS_LOG_FUNCTION(interest->getName());
+
             Name dataName(interest->getName());
-            // dataName.append(m_postfix);
-            // dataName.appendVersion();
-
             auto data = make_shared<Data>();
             data->setName(dataName);
             data->setFreshnessPeriod(::ndn::time::milliseconds(m_freshness.GetMilliSeconds()));
-
             data->setContent(make_shared<::ndn::Buffer>(m_virtualPayloadSize));
-            ndn::StackHelper::getKeyChain().sign(*data);
 
-            NS_LOG_INFO(data->getName());
+            // Sign Data packet with default identity
+            m_keyChain.sign(*data, m_signingInfo);
 
             // to create real wire encoding
             data->wireEncode();
 
+            // LOGGING
+            NS_LOG_INFO("Sending Data packet: " << data->getName());
+            // NS_LOG_INFO("Signature: " << data->getSignature().getSignatureInfo());
+
             // Call trace (for logging purposes)
             m_transmittedDatas(data, this, m_face);
             m_appLink->onReceiveData(*data);
+        }
+
+        const ::ndn::security::v2::Certificate &CustomProducerBoot::createCertificate() {
+            if (m_identityPrefix.size() == 0) {
+                m_identityPrefix = m_prefix;
+            }
+            NS_LOG_INFO("Identity: " << m_identityPrefix);
+            try {
+                // clear keychain from any identical identities
+                m_keyChain.deleteIdentity(m_keyChain.getPib().getIdentity(m_identityPrefix));
+            } catch (::ndn::security::pib::Pib::Error &e) {
+                // no identity found, proceed with the new identity creation
+            }
+            // create identity and certificates
+            auto identity = m_keyChain.createIdentity(m_identityPrefix);
+            m_keyChain.setDefaultIdentity(identity);
+            m_signingInfo.setSigningIdentity(m_identityPrefix);  ///< define the default Data packet signer
+
+            // sign certificate with trust anchor
+            auto &key = identity.getDefaultKey();
+            auto cert = m_signCallback(key.getDefaultCertificate());
+            m_keyChain.deleteCertificate(key, cert.getName());
+            m_keyChain.addCertificate(key, cert);
+            return key.getDefaultCertificate();
+        }
+
+        void CustomProducerBoot::loadCertificateTrustAnchor() {
+            NS_LOG_DEBUG("TrustAnchor: " << m_trustAnchorIdentityPrefix << " - CertFilename: " << m_trustAnchorCertFilename);
+            auto rootIdentity = m_keyChain.createIdentity(m_trustAnchorIdentityPrefix);
+            auto rootKey      = rootIdentity.getDefaultKey();
+            m_keyChain.deleteKey(rootIdentity, rootKey);
+
+            auto newCert   = ::ndn::io::load<::ndn::security::v2::Certificate>(m_trustAnchorCertFilename);
+            auto keyParams = ::ndn::security::v2::KeyChain::getDefaultKeyParams();
+            keyParams.setKeyId(newCert->getKeyId());
+            rootKey = m_keyChain.createKey(rootIdentity, keyParams);
+            m_keyChain.addCertificate(rootKey, *newCert);
+        }
+
+        void CustomProducerBoot::setSignCallback(std::function<::ndn::security::v2::Certificate(::ndn::security::v2::Certificate)> cb) {
+            m_signCallback = cb;
+        }
+
+        // void CustomProducerBoot::signCertificateWithTrustAnchor() {
+        //     // trust anchor identity
+        //     NS_LOG_INFO("Identity: " << m_identityPrefix << " - TrustAnchor: " << m_trustAnchorIdentityPrefix);
+        //     auto rootIdentity = m_keyChain.getPib().getIdentity(m_trustAnchorIdentityPrefix);
+
+        //     // local identity
+        //     auto identity = m_keyChain.getPib().getIdentity(m_identityPrefix);
+        //     auto &key     = identity.getDefaultKey();
+        //     auto cert     = key.getDefaultCertificate();
+        //     m_keyChain.sign(cert, ::ndn::security::SigningInfo(rootIdentity));
+        //     m_keyChain.addCertificate(key, cert);
+        // }
+
+        void CustomProducerBoot::printKeyChain() {
+            for (auto identity : m_keyChain.getPib().getIdentities()) {
+                NS_LOG_DEBUG("Identity: " << identity.getName());
+                for (auto key : identity.getKeys()) {
+                    NS_LOG_DEBUG("Key: " << key.getName() << " - Type: " << key.getKeyType());
+                    for (auto cert : key.getCertificates()) {
+                        NS_LOG_DEBUG(cert);
+                    }
+                }
+            }
         }
 
     }  // namespace ndn
