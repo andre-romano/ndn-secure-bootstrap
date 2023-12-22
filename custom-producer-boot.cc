@@ -260,7 +260,7 @@ namespace ns3 {
             // create identity and certificates
             auto identity = m_keyChain.createIdentity(m_identityPrefix);
             m_keyChain.setDefaultIdentity(identity);
-            m_signingInfo.setSigningIdentity(m_identityPrefix);  ///< define the default Data packet signer
+            m_signingInfo.setPibIdentity(identity);  ///< define the default Data packet signer
 
             // sign certificate with trust anchor
             auto &key = identity.getDefaultKey();

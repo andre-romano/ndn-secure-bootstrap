@@ -1,7 +1,6 @@
 // custom-app.cpp
 
 #include "custom-consumer-boot.hpp"
-#include "certificate-fetcher-from-ns3.hpp"
 
 #include "ns3/log.h"
 #include "ns3/packet.h"
@@ -49,7 +48,7 @@ namespace ns3 {
         return tid;
     }
 
-    CustomConsumerBoot::CustomConsumerBoot() {}
+    CustomConsumerBoot::CustomConsumerBoot() : m_face_NDN_CXX(0) {}
     CustomConsumerBoot::~CustomConsumerBoot() {}
 
     // Processing upon start of the application
@@ -57,6 +56,9 @@ namespace ns3 {
     CustomConsumerBoot::StartApplication() {
         NS_LOG_FUNCTION_NOARGS();
         ndn::App::StartApplication();
+
+        // create ndn::Face to allow real-world application to interact inside ns3
+        m_face_NDN_CXX = std::make_shared<::ndn::Face>();
 
         // setup validator (trust schema)
         SetupValidator();
@@ -80,8 +82,7 @@ namespace ns3 {
 
     /// @brief must be run after ndn::App.StartApplication()
     void CustomConsumerBoot::SetupValidator() {
-        // m_validator = std::make_shared<::ndn::security::ValidatorConfig>(std::make_unique<::ndn::security::v2::CertificateFetcherFromNS3>(m_appLink));
-        m_validator = std::make_shared<::ndn::security::ValidatorConfig>(std::make_unique<::ndn::security::v2::CertificateFetcherOffline>());
+        m_validator = std::make_shared<::ndn::security::ValidatorConfig>(std::make_unique<::ndn::security::v2::CertificateFetcherFromNetwork>(*m_face_NDN_CXX));
         try {
             m_validator->load(m_validatorFilename);
         } catch (const std::exception &e) {
@@ -125,7 +126,7 @@ namespace ns3 {
 
     // Callback that will be called when Data arrives
     void CustomConsumerBoot::OnData(std::shared_ptr<const ndn::Data> data) {
-        NS_LOG_DEBUG("Receiving Data packet: " << data->getName());
+        NS_LOG_DEBUG("Receiving Data packet: " << data->getName() << " - KeyLocator: " << data->getSignature().getKeyLocator());
         m_validator->validate(*data, MakeCallback(&CustomConsumerBoot::OnDataValidated, this), MakeCallback(&CustomConsumerBoot::OnDataValidationFailed, this));
         // std::cout << "DATA received for name " << data->getName() << std::endl;
     }

@@ -9,6 +9,7 @@
 #include "ns3/ndnSIM/model/ndn-common.hpp"
 #include "ns3/random-variable-stream.h"
 
+#include "ns3/ndnSIM/ndn-cxx/face.hpp"
 #include "ns3/ndnSIM/ndn-cxx/security/key-chain.hpp"
 #include "ns3/ndnSIM/ndn-cxx/security/validator-config.hpp"
 
@@ -60,6 +61,8 @@ namespace ns3 {
 
         std::string m_validatorFilename;
         std::shared_ptr<::ndn::ValidatorConfig> m_validator;
+
+        std::shared_ptr<::ndn::Face> m_face_NDN_CXX;  ///< @brief ndn::Face to allow real-world applications to work inside ns3
 
         bool m_firstTime;     ///< @brief First time sending an Interest packet
         EventId m_sendEvent;  ///< @brief EventId of pending "send packet" event

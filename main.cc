@@ -55,7 +55,7 @@
 #include "custom-producer-boot.hpp"
 #include "custom-tracer-boot.hpp"
 
-NS_LOG_COMPONENT_DEFINE("security.sim_bootsec");
+NS_LOG_COMPONENT_DEFINE("sim_bootsec");
 
 using namespace std;
 

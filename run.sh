@@ -82,7 +82,7 @@ if [ -z "$LOGS" ]; then
     # :ndn-cxx.nfd-IntMetaInfo
     # :CustomTracer
     # CUSTOM_LOGS=CustomConsumer:CustomProducer:ndn-cxx.nfd.CustomStrategy:IntMetaInfo:IntBestQuartile
-    CUSTOM_LOGS=security.sim_bootsec:CustomConsumerBoot:CustomProducerBoot
+    CUSTOM_LOGS=sim_bootsec:CustomConsumerBoot:CustomProducerBoot
     
 # :WifiRadioEnergyModelPhyListener
 # :WifiRadioEnergyModel
@@ -95,11 +95,12 @@ if [ -z "$LOGS" ]; then
     # :ndn.NetDeviceTransport
     # :ndn-cxx.nfd.Forwarder
     # :ndn-cxx.nfd.Strategy    
-# ndn-cxx.ndn.security.pib.Pib:ndn-cxx.ndn.security.v2.CertificateBundleFetcher:ndn-cxx.ndn.security.v2.CertificateCache:ndn-cxx.ndn.security.v2.CertificateFetcher:ndn-cxx.ndn.security.v2.CertificateFetcher.FromNetwork:ndn-cxx.ndn.security.v2.KeyChain:ndn-cxx.ndn.security.v2.TrustAnchorGroup:ndn-cxx.ndn.security.v2.ValidationState:ndn-cxx.ndn.security.v2.Validator:ndn-cxx.ndn.security.validator_config.Rule:
+    LOG_NDN_SECURITY=ndn-cxx.ndn.security.pib.Pib:ndn-cxx.ndn.security.v2.CertificateBundleFetcher:ndn-cxx.ndn.security.v2.CertificateCache:ndn-cxx.ndn.security.v2.CertificateFetcher:ndn-cxx.ndn.security.v2.CertificateFetcher.FromNetwork:ndn-cxx.ndn.security.v2.KeyChain:ndn-cxx.ndn.security.v2.TrustAnchorGroup:ndn-cxx.ndn.security.v2.ValidationState:ndn-cxx.ndn.security.v2.Validator:ndn-cxx.ndn.security.validator_config.Rule
 
     # Activates some logs in NS3 (modules are separed by :) - check list of available 
-    # modules by typing LOGS=nshelp
-    LOGS=ndn-cxx.ndn.security.v2.CertificateFetcher.FromNS3:ndn.Producer:ndn.Consumer:"$CUSTOM_LOGS"
+    # modules by typing LOGS=nshelp    
+    LOGS=ndn.Producer:ndn.Consumer:${CUSTOM_LOGS}:${LOG_NDN_SECURITY}
+    
 elif [ "$LOGS" == ":" ]; then    
     # if user typed LOGS=: , logs will be disabled in NS3 simulation
     LOGS=""
