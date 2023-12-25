@@ -11,6 +11,7 @@
 #include "ns3/simulator.h"
 
 #include "ns3/ndnSIM/ndn-cxx/security/key-chain.hpp"
+#include "ns3/ndnSIM/ndn-cxx/security/signing-helpers.hpp"
 
 #include <functional>
 #include <set>

@@ -314,8 +314,6 @@ namespace ns3 {
         // ndn::AppHelper producerHelper("ns3::ndn::Producer");
         NS_LOG_INFO("Installing Producer App ...");
         ndn::AppHelper producerHelper("CustomProducerBoot");
-        producerHelper.SetAttribute("TrustAnchorIdentity", StringValue(rootIdentityPrefix));
-        producerHelper.SetAttribute("TrustAnchorCertFilename", StringValue(nTrustAnchorCert));
         producerHelper.SetAttribute("Freshness", TimeValue(Seconds(nFreshness)));
         producerHelper.SetAttribute("PayloadSize", StringValue("1480"));  // payload MTU
         producerHelper.SetPrefix(prefixName);                             // ndn prefix

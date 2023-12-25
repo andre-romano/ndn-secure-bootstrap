@@ -136,17 +136,7 @@ namespace ns3 {
                                                   "Name of the Identity of the App",
                                                   StringValue(""),
                                                   MakeNameAccessor(&CustomProducerBoot::m_identityPrefix),
-                                                  MakeNameChecker())
-                                    .AddAttribute("TrustAnchorIdentity",
-                                                  "Name of the TrustAnchor Identity",
-                                                  StringValue("/"),
-                                                  MakeNameAccessor(&CustomProducerBoot::m_trustAnchorIdentityPrefix),
-                                                  MakeNameChecker())
-                                    .AddAttribute("TrustAnchorCertFilename",
-                                                  "Name of the TrustAnchor Identity",
-                                                  StringValue("./scratch/sim_bootsec/config/trustanchor.cert"),
-                                                  MakeStringAccessor(&CustomProducerBoot::m_trustAnchorCertFilename),
-                                                  MakeStringChecker());
+                                                  MakeNameChecker());
             // .AddAttribute("IntMetrics",
             //               "Set of INT metrics to collect",
             //               IntMetricSetValue(),
@@ -180,7 +170,7 @@ namespace ns3 {
             // create self-signed certificate/identity and serve it
             auto &cert = createCertificate();
             // loadCertificateTrustAnchor();
-            ndn::FibHelper::AddRoute(GetNode(), cert.getName(), m_face, 0);
+            ndn::FibHelper::AddRoute(GetNode(), ::ndn::security::v2::extractKeyNameFromCertName(cert.getName()), m_face, 0);
             NS_LOG_DEBUG("Serving Data prefix: " << m_prefix << " - Certificate: " << cert.getName());
 
             // NS_LOG_DEBUG(cert);
@@ -196,7 +186,7 @@ namespace ns3 {
             ndn::App::OnInterest(interest);  // forward call to perform app-level tracing
 
             // Note that Interests send out by the app will not be sent back to the app !
-            if (::ndn::security::v2::Certificate::isValidName(interest->getName())) {
+            if (::ndn::security::v2::isValidKeyName(interest->getName())) {
                 OnInterestKey(interest);
             } else {
                 OnInterestContent(interest);
@@ -206,20 +196,20 @@ namespace ns3 {
         void CustomProducerBoot::OnInterestKey(std::shared_ptr<const ndn::Interest> interest) {
             NS_LOG_FUNCTION(interest->getName());
 
-            auto identity = m_keyChain.getPib().getIdentity(::ndn::security::v2::extractIdentityFromCertName(interest->getName()));
-            auto key      = identity.getKey(::ndn::security::v2::extractKeyNameFromCertName(interest->getName()));
-            auto cert     = key.getCertificate(interest->getName());
+            auto identity = m_keyChain.getPib().getIdentity(::ndn::security::v2::extractIdentityFromKeyName(interest->getName()));
+            auto key      = identity.getKey(interest->getName());
+            auto cert     = std::make_shared<::ndn::security::v2::Certificate>(key.getDefaultCertificate());
 
             // to create real wire encoding
-            cert.wireEncode();
+            cert->wireEncode();
 
             // LOGGING
-            NS_LOG_INFO("Sending Certificate packet: " << cert.getName());
+            NS_LOG_INFO("Sending Certificate packet: " << cert->getName());
             // NS_LOG_INFO("Signature: " << cert.getSignature().getSignatureInfo());
 
             // Call trace (for logging purposes) - no way to log certificate issuing below
             // m_transmittedDatas(cert, this, m_face);
-            m_appLink->onReceiveData(cert);
+            m_appLink->onReceiveData(*cert);
         }
 
         void CustomProducerBoot::OnInterestContent(std::shared_ptr<const ndn::Interest> interest) {
@@ -259,12 +249,11 @@ namespace ns3 {
             }
             // create identity and certificates
             auto identity = m_keyChain.createIdentity(m_identityPrefix);
-            m_keyChain.setDefaultIdentity(identity);
-            m_signingInfo.setPibIdentity(identity);  ///< define the default Data packet signer
+            auto &key     = identity.getDefaultKey();
+            auto cert     = m_signCallback(key.getDefaultCertificate());
+            m_keyChain.setDefaultIdentity(identity);  ///< define the default Data packet signer
 
             // sign certificate with trust anchor
-            auto &key = identity.getDefaultKey();
-            auto cert = m_signCallback(key.getDefaultCertificate());
             m_keyChain.deleteCertificate(key, cert.getName());
             m_keyChain.addCertificate(key, cert);
             return key.getDefaultCertificate();
