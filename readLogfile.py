@@ -4,7 +4,6 @@ import fileinput
 import sys
 import os
 
-
 class LogfileParser():
 
     def __init__(self):
@@ -114,7 +113,7 @@ class LogfileParser():
 if __name__ == "__main__":
     os.chdir(os.path.dirname(__file__))
     p = LogfileParser()
-    p.run('../results/logfile.log', '../results/data.dat')
+    p.run('../../results/logfile.log', '../../results/data.dat')
 
 # print("In Interests: ", inInterests)
 # print("Sat Interests: ", satisfiedInterests)
