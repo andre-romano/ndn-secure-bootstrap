@@ -57,12 +57,13 @@ wget -O jdk-21_linux-x64_bin.deb https://download.oracle.com/java/21/latest/jdk-
 sudo apt-get -y install ./jdk-21_linux-x64_bin.deb
 
 wget -O bonnmotion-3.0.1.zip https://sys.cs.uos.de/bonnmotion/src/bonnmotion-3.0.1.zip
-unzip bonnmotion-3.0.1.zip
+unzip bonnmotion-3.0.1.zip &&
+rm bonnmotion-3.0.1.zip
 cd bonnmotion-3.0.1
 chmod +rx *.sh *.bat ./install
 ./install
 mkdir -p ~/.local/bin
-cp bin/bm ~/.local/bin
+ln -sf ~/bonnmotion-3.0.1/bin/bm ~/.local/bin
 chmod +rx ~/.local/bin/*
 echo "export PATH=\$PATH:\$HOME/.local/bin" >> ~/.bash_aliases
 . ~/.bash_aliases
