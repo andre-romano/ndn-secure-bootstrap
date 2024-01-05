@@ -35,10 +35,13 @@ sudo apt-get -y install ./jdk-21_linux-x64_bin.deb
 wget -O bonnmotion-3.0.1.zip https://sys.cs.uos.de/bonnmotion/src/bonnmotion-3.0.1.zip
 unzip bonnmotion-3.0.1.zip
 cd bonnmotion-3.0.1
-chmod +rx *.sh
-./install.sh
+chmod +rx *.sh *.bat ./install
+./install
+mkdir -p ~/.local/bin
 cp bin/bm ~/.local/bin
 chmod +rx ~/.local/bin/*
+export PATH=$PATH:$HOME/.local/bin
+echo "export PATH=$PATH" >> ~/.bash_aliases
 ```
 
 ### Setup
