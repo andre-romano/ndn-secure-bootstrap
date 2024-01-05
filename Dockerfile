@@ -17,4 +17,5 @@ RUN export JDK_PATH=/opt/jdk-21.0.1 && \
     cd bonnmotion-3.0.1 && \
     chmod 755 -R . && \
     bash -c "./install <<< \"$JDK_PATH/bin\" " && \
-    ln -sf /opt/bonnmotion-3.0.1/bin/bm /usr/bin 
+    ln -sf /opt/bonnmotion-3.0.1/bin/bm /usr/bin && \
+    ln -sf /ndnSIM /root/ndnSIM
