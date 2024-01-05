@@ -38,7 +38,7 @@ cd bonnmotion-3.0.1
 chmod +rx *.sh *.bat ./install
 ./install
 mkdir -p ~/.local/bin
-cp bin/bm ~/.local/bin
+ln ~/bonnmotion-3.0.1/bin/bm ~/.local/bin
 chmod +rx ~/.local/bin/*
 echo "export PATH=\$PATH:\$HOME/.local/bin" >> ~/.bash_aliases
 . ~/.bash_aliases
