@@ -13,7 +13,7 @@ RESULTS_DIR=~/ndnSIM/ns-3/results
 LOGFILE=${RESULTS_DIR}/logfile.log
 SIMULATION_LOG=${RESULTS_DIR}/simulation.log
 MOBILITY_LOG=${RESULTS_DIR}/mobility-trace.log
-PARSE_LOGFILE=${RESULTS_DIR}/readLogfile.py
+PARSE_LOGFILE=./readLogfile.py
 CREATE_MOBILITY_TRACE=./createNS3mobilityTrace.sh
 
 mkdir -p $RESULTS_DIR
@@ -112,7 +112,6 @@ if [ -z "$REPEAT" ]; then
 fi
 REPEAT_TOTAL="$REPEAT"
 
-RESULT_INITIAL_PATH=$($GET_PATH_MOVE_RESULTS "$RESULTS_DIR")
 while [ "$REPEAT" -gt 0 ]; do
     # set simulation seed
     GLOBAL_ARGS="RngRun=$REPEAT"

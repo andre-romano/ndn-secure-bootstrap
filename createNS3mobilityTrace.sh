@@ -1,6 +1,6 @@
 #!/bin/bash
 if [ -z "$DEST_DIR" ]; then
-    DEST_DIR="../results/mobility-trace"
+    DEST_DIR="../../results/mobility-trace"
 fi
 
 if [ -z "$SEED" ]; then

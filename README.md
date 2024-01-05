@@ -1,8 +1,32 @@
-## INSTALL Dependencies - Instructions
+
+# Overview
+
+This project can be run in either one of the following methods:
+
+## Option 1 - Run project inside Docker (recommended)
+
+Execute the following command:
+```bash
+bash ./docker-run.sh
+```
+
+An ```./ndnSIM``` folder will be created and populated with the required dependencies (ns-3, ndnSIM module, python bindings, bonnmotion, sim_bootsec project inside ```./ns-3/scratch``` folder).
+
+Inside the terminal, type in the following to perform simulations:
+```bash
+cd ./scratch/sim_bootsec
+./run.sh
+```
+
+The ```run.sh``` has some simulation paramters that can be changed, please check the file.
+
+## Option 2 - Run project inside Ubuntu VM
+
+### INSTALL Dependencies - Instructions
 
 Following NS3 code was tested under Ubuntu 20.04. It might work using other distros, but it is not guaranteed.
 
-### INSTALL - NDNSIM 
+#### INSTALL - NDNSIM 
 
 Execute the following in the bash terminal:
 ```bash
@@ -24,7 +48,7 @@ cd ns-3
 ./waf
 ```
 
-### INSTALL - BonnMotion mobility generator
+#### INSTALL - BonnMotion mobility generator
 
 Execute the following:
 ```bash
@@ -44,7 +68,7 @@ echo "export PATH=\$PATH:\$HOME/.local/bin" >> ~/.bash_aliases
 . ~/.bash_aliases
 ```
 
-### Setup
+#### Setup
 
 Execute the following:
 ```bash
@@ -53,7 +77,7 @@ git clone git@github.com:andre-romano/ndn-secure-bootstrap.git sim_bootsec
 chmod +rx -R sim_bootsec/*
 ```
 
-### Run experiments
+#### Run experiments
 
 Execute the following:
 
