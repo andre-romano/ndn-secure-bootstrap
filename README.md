@@ -40,8 +40,8 @@ chmod +rx *.sh *.bat ./install
 mkdir -p ~/.local/bin
 cp bin/bm ~/.local/bin
 chmod +rx ~/.local/bin/*
-export PATH=$PATH:$HOME/.local/bin
-echo "export PATH=$PATH" >> ~/.bash_aliases
+echo "export PATH=\$PATH:\$HOME/.local/bin" >> ~/.bash_aliases
+. ~/.bash_aliases
 ```
 
 ### Setup
