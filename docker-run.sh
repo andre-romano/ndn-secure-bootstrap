@@ -20,8 +20,5 @@ if ! [ -e "./ndnSIM/ns-3/scratch/sim_bootsec" ]; then
     git clone -b "$GIT_CURRENT_BRANCH" git@github.com:andre-romano/ndn-secure-bootstrap.git "./ndnSIM/ns-3/scratch/sim_bootsec/"    
     mkdir -p "./ndnSIM/ns-3/results"
 fi
-if [ -z "$($DOCKER_CMD container ls -a --external -f \"name=^$DOCKER_IMAGE_NAME\$\")" ]; then
-    $DOCKER_CMD run --name sim_bootsec -it -v ./ndnSIM:/ndnSIM localhost/$DOCKER_IMAGE_NAME
-else
-    $DOCKER_CMD start -ai sim_bootsec
-fi
+$DOCKER_CMD run --name sim_bootsec -it -v ./ndnSIM:/ndnSIM localhost/$DOCKER_IMAGE_NAME ||
+$DOCKER_CMD start -ai sim_bootsec
