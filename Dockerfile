@@ -18,4 +18,4 @@ RUN apt-get update && \
     chmod 755 -R . && \
     bash -c "./install <<< \"$JDK_PATH/bin\" " && \
     ln -sf /opt/bonnmotion-3.0.1/bin/bm /usr/bin && \
-    ln -sf /ndnSIM ~/ndnSIM
+    ln -sf /ndnSIM /root/ndnSIM

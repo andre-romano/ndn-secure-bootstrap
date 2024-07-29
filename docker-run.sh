@@ -18,6 +18,7 @@ if ! [ -e "./ndnSIM/ns-3/scratch/sim_bootsec" ]; then
     chmod 755 -R .
     GIT_CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     git clone -b "$GIT_CURRENT_BRANCH" git@github.com:andre-romano/ndn-secure-bootstrap.git "./ndnSIM/ns-3/scratch/sim_bootsec/"    
+    mkdir -p "./ndnSIM/ns-3/results"
 fi
 $DOCKER_CMD run --name $DOCKER_IMAGE_NAME -it -v ./ndnSIM:/ndnSIM localhost/$DOCKER_IMAGE_NAME ||
 $DOCKER_CMD start -at $DOCKER_IMAGE_NAME
