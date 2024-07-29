@@ -56,7 +56,7 @@ export SIM_DURATION
 
 if [ -z "$MAP_SIZE" ]; then
     # map size used by BonnMotion mobility models
-    MAP_SIZE=200
+    MAP_SIZE=10
 fi
 export MAP_SIZE
 
@@ -82,7 +82,7 @@ if [ -z "$LOGS" ]; then
     # :ndn-cxx.nfd-IntMetaInfo
     # :CustomTracer
     # CUSTOM_LOGS=CustomConsumer:CustomProducer:ndn-cxx.nfd.CustomStrategy:IntMetaInfo:IntBestQuartile
-    CUSTOM_LOGS=sim_bootsec:CustomConsumer:CustomProducer
+    CUSTOM_LOGS=sim_bootsec:CustomConsumer:CustomProducer:CustomZone
     
 # :WifiRadioEnergyModelPhyListener
 # :WifiRadioEnergyModel
