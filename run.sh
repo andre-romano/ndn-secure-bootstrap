@@ -69,7 +69,7 @@ export MOBILITY_MODEL
 
 if [ -z "$SIM_FILE" ]; then
     # SIM_FILE="sim_ndn_wifi -nSimDuration=${SIM_DURATION} -nNodes=${NODE_NUM}"
-    SIM_FILE="sim_bootsec -nSimDuration=${SIM_DURATION} -nNodes=${NODE_NUM}"
+    SIM_FILE="sim_bootsec -nSimDuration=${SIM_DURATION}"
 fi
 if [ -z "$GLOBAL_ARGS" ]; then
     GLOBAL_ARGS="RngRun=1"

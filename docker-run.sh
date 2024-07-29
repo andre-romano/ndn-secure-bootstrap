@@ -19,5 +19,5 @@ if ! [ -e "./ndnSIM/ns-3/scratch/sim_bootsec" ]; then
     GIT_CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     git clone -b "$GIT_CURRENT_BRANCH" git@github.com:andre-romano/ndn-secure-bootstrap.git "./ndnSIM/ns-3/scratch/sim_bootsec/"    
 fi
-$DOCKER_CMD run --name sim_bootsec -it -v ./ndnSIM:/ndnSIM localhost/$DOCKER_IMAGE_NAME ||
-$DOCKER_CMD start -at sim_bootsec
+$DOCKER_CMD run --name $DOCKER_IMAGE_NAME -it -v ./ndnSIM:/ndnSIM localhost/$DOCKER_IMAGE_NAME ||
+$DOCKER_CMD start -at $DOCKER_IMAGE_NAME
