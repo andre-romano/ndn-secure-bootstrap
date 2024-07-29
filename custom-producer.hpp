@@ -20,8 +20,9 @@
 // namespace ns3 {
 //     class IntMetricSet : public std::set<IntMetric> {};
 
-//     std::ostream &operator<<(std::ostream &os, const IntMetricSet &intMetrics);
-//     std::istream &operator>>(std::istream &is, IntMetricSet &intMetrics);
+//     std::ostream &operator<<(std::ostream &os, const IntMetricSet
+//     &intMetrics); std::istream &operator>>(std::istream &is, IntMetricSet
+//     &intMetrics);
 
 //     ATTRIBUTE_HELPER_HEADER(IntMetricSet);
 
@@ -36,25 +37,29 @@
 namespace ns3 {
     namespace ndn {
 
-        class CustomProducerBoot : public App {
+        class CustomProducer : public App {
           public:
-            using signCallback = std::function<::ndn::security::v2::Certificate(::ndn::security::v2::Certificate)>;
+            using signCallback = std::function<::ndn::security::v2::Certificate(
+                ::ndn::security::v2::Certificate
+            )>;
 
           public:
             static TypeId GetTypeId();
-            CustomProducerBoot();
-            ~CustomProducerBoot();
+            CustomProducer();
+            ~CustomProducer();
 
             // inherited from Application base class.
             virtual void StartApplication();
 
             virtual void StopApplication();
 
-            // (overridden from ndn::App) Callback that will be called when Interest arrives
+            // (overridden from ndn::App) Callback that will be called when
+            // Interest arrives
             virtual void OnInterest(std::shared_ptr<const Interest> interest);
 
             void OnInterestKey(std::shared_ptr<const ndn::Interest> interest);
-            void OnInterestContent(std::shared_ptr<const ndn::Interest> interest);
+            void OnInterestContent(std::shared_ptr<const ndn::Interest> interest
+            );
 
             void setSignCallback(signCallback cb);
 
@@ -78,7 +83,7 @@ namespace ns3 {
             ::ndn::security::SigningInfo m_signingInfo;
         };
 
-    }  // namespace ndn
-}  // namespace ns3
+    } // namespace ndn
+} // namespace ns3
 
-#endif  // CUSTOM_PRODUCER_BOOT_H_
+#endif // CUSTOM_PRODUCER_BOOT_H_

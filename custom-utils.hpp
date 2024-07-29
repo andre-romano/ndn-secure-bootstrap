@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-class AvgStructBoot {
+class AvgStruct {
   public:
-    AvgStructBoot();
+    AvgStruct();
     void update(double current);
     double get();
     void clear();

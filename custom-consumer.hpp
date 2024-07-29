@@ -15,12 +15,12 @@
 
 namespace ns3 {
 
-    class CustomConsumerBoot : public ndn::App {
+    class CustomConsumer : public ndn::App {
       public:
-        CustomConsumerBoot();
-        ~CustomConsumerBoot();
+        CustomConsumer();
+        ~CustomConsumer();
 
-        // register NS-3 type "CustomConsumerBoot"
+        // register NS-3 type "CustomConsumer"
         static TypeId GetTypeId();
 
         // (overridden from ndn::App) Processing upon start of the application
@@ -29,12 +29,16 @@ namespace ns3 {
         // (overridden from ndn::App) Processing when application is stopped
         virtual void StopApplication();
 
-        // (overridden from ndn::App) Callback that will be called when Data arrives
+        // (overridden from ndn::App) Callback that will be called when Data
+        // arrives
         virtual void OnData(std::shared_ptr<const ndn::Data> data);
 
       public:
         void OnDataValidated(const ndn::Data &data);
-        void OnDataValidationFailed(const ndn::Data &data, const ::ndn::security::v2::ValidationError &error);
+        void OnDataValidationFailed(
+            const ndn::Data &data,
+            const ::ndn::security::v2::ValidationError &error
+        );
 
         /**
          * @brief Set type of frequency randomization
@@ -62,15 +66,18 @@ namespace ns3 {
         std::string m_validatorFilename;
         std::shared_ptr<::ndn::ValidatorConfig> m_validator;
 
-        std::shared_ptr<::ndn::Face> m_face_NDN_CXX;  ///< @brief ndn::Face to allow real-world applications to work inside ns3
+        std::shared_ptr<::ndn::Face>
+            m_face_NDN_CXX; ///< @brief ndn::Face to allow real-world
+                            ///< applications to work inside ns3
 
-        bool m_firstTime;     ///< @brief First time sending an Interest packet
-        EventId m_sendEvent;  ///< @brief EventId of pending "send packet" event
+        bool m_firstTime;    ///< @brief First time sending an Interest packet
+        EventId m_sendEvent; ///< @brief EventId of pending "send packet" event
 
-        Ptr<RandomVariableStream> m_random;  ///< @brief Random generator for packet send
+        Ptr<RandomVariableStream>
+            m_random; ///< @brief Random generator for packet send
         std::string m_randomType;
     };
 
-}  // namespace ns3
+} // namespace ns3
 
-#endif  // CUSTOM_CONSUMER_BOOT_H_
+#endif // CUSTOM_CONSUMER_BOOT_H_

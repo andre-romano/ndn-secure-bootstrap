@@ -82,7 +82,7 @@ if [ -z "$LOGS" ]; then
     # :ndn-cxx.nfd-IntMetaInfo
     # :CustomTracer
     # CUSTOM_LOGS=CustomConsumer:CustomProducer:ndn-cxx.nfd.CustomStrategy:IntMetaInfo:IntBestQuartile
-    CUSTOM_LOGS=sim_bootsec:CustomConsumerBoot:CustomProducerBoot
+    CUSTOM_LOGS=sim_bootsec:CustomConsumer:CustomProducer
     
 # :WifiRadioEnergyModelPhyListener
 # :WifiRadioEnergyModel
