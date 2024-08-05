@@ -78,28 +78,33 @@ if [ -z "$SHOW_LOGS" ]; then
     # set it to 0 to stop logfile generation
     SHOW_LOGS="1"
 fi
-if [ -z "$LOGS" ]; then    
-    # :ndn-cxx.nfd-IntMetaInfo
-    # :CustomTracer
-    # CUSTOM_LOGS=CustomConsumer:CustomProducer:ndn-cxx.nfd.CustomStrategy:IntMetaInfo:IntBestQuartile
-    CUSTOM_LOGS=sim_bootsec:CustomConsumer:CustomProducer:CustomZone
-    
-# :WifiRadioEnergyModelPhyListener
-# :WifiRadioEnergyModel
-# :BasicEnergySource
-# :WifiPhyStateHelper
-# :WifiPhy
-# :RegularWifiMac
-    # :ndn.FibHelper
-    # :ndn.StackHelper
-    # :ndn.NetDeviceTransport
-    # :ndn-cxx.nfd.Forwarder
-    # :ndn-cxx.nfd.Strategy    
-    LOG_NDN_SECURITY=ndn-cxx.ndn.security.pib.Pib:ndn-cxx.ndn.security.v2.CertificateBundleFetcher:ndn-cxx.ndn.security.v2.CertificateCache:ndn-cxx.ndn.security.v2.CertificateFetcher:ndn-cxx.ndn.security.v2.CertificateFetcher.FromNetwork:ndn-cxx.ndn.security.v2.KeyChain:ndn-cxx.ndn.security.v2.TrustAnchorGroup:ndn-cxx.ndn.security.v2.ValidationState:ndn-cxx.ndn.security.v2.Validator:ndn-cxx.ndn.security.validator_config.Rule
+if [ -z "$LOGS" ]; then                
+    CUSTOM_LOGS=sim_bootsec
+    CUSTOM_LOGS=${CUSTOM_LOGS}:CustomConsumer
+    CUSTOM_LOGS=${CUSTOM_LOGS}:CustomProducer
+    CUSTOM_LOGS=${CUSTOM_LOGS}:CustomTrustAnchor
+    CUSTOM_LOGS=${CUSTOM_LOGS}:CustomZone
+    # CUSTOM_LOGS=${CUSTOM_LOGS}:CustomTracer
+        
+    LOG_NDN_SECURITY=ndn-cxx.ndn.security.pib.Pib
+    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateBundleFetcher
+    # LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateCache
+    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateFetcher
+    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateFetcher.FromNetwork
+    # LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.KeyChain
+    # LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.TrustAnchorGroup
+    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.ValidationState
+    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.Validator
+    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.validator_config.Rule
 
     # Activates some logs in NS3 (modules are separed by :) - check list of available 
-    # modules by typing LOGS=nshelp    
-    LOGS=ndn.Producer:ndn.Consumer:${CUSTOM_LOGS}:${LOG_NDN_SECURITY}
+    # modules by typing LOGS=nshelp        
+    LOGS=${CUSTOM_LOGS}
+    LOGS=${LOGS}:${LOG_NDN_SECURITY}
+    LOGS=${LOGS}:ndn.Consumer
+    LOGS=${LOGS}:ndn.Producer
+    # LOGS=${LOGS}:ndn-cxx.nfd.Forwarder
+    # LOGS=${LOGS}:ndn-cxx.nfd.Strategy    
     
 elif [ "$LOGS" == ":" ]; then    
     # if user typed LOGS=: , logs will be disabled in NS3 simulation

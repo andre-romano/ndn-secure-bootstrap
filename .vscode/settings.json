@@ -78,7 +78,9 @@
         "__nullptr": "cpp",
         "regex": "cpp",
         "shared_mutex": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "__locale": "cpp",
+        "*.ipp": "cpp"
     },
     "editor.formatOnSave": true,
     "C_Cpp.clang_format_style": "file:./.vscode/.clang-format",

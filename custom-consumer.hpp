@@ -3,7 +3,10 @@
 #ifndef CUSTOM_CONSUMER_BOOT_H_
 #define CUSTOM_CONSUMER_BOOT_H_
 
+#include <map>
+#include <set>
 #include <string>
+#include <vector>
 
 #include "ns3/ndnSIM/apps/ndn-app.hpp"
 #include "ns3/ndnSIM/model/ndn-common.hpp"
@@ -15,68 +18,64 @@
 
 namespace ns3 {
 
-    class CustomConsumer : public ndn::App {
-      public:
-        CustomConsumer();
-        ~CustomConsumer();
+  class CustomConsumer : public ndn::App {
+  public:
+    CustomConsumer();
+    ~CustomConsumer();
 
-        // register NS-3 type "CustomConsumer"
-        static TypeId GetTypeId();
+    // register NS-3 type "CustomConsumer"
+    static TypeId GetTypeId();
 
-        // (overridden from ndn::App) Processing upon start of the application
-        virtual void StartApplication();
+    virtual void StartApplication() override;
+    virtual void StopApplication() override;
 
-        // (overridden from ndn::App) Processing when application is stopped
-        virtual void StopApplication();
+    virtual void OnData(std::shared_ptr<const ndn::Data> data) override;
 
-        // (overridden from ndn::App) Callback that will be called when Data
-        // arrives
-        virtual void OnData(std::shared_ptr<const ndn::Data> data);
+    // data validation callbacks
+    void OnDataValidated(const ndn::Data &data);
+    void OnDataValidationFailed(const ndn::Data &data, const ::ndn::security::v2::ValidationError &error);
 
-      public:
-        void OnDataValidated(const ndn::Data &data);
-        void OnDataValidationFailed(
-            const ndn::Data &data,
-            const ::ndn::security::v2::ValidationError &error
-        );
+    /**
+     * @brief Set type of frequency randomization
+     * @param value Either 'none', 'uniform', or 'exponential'
+     */
+    void SetRandomize(const std::string &value);
 
-        /**
-         * @brief Set type of frequency randomization
-         * @param value Either 'none', 'uniform', or 'exponential'
-         */
-        void SetRandomize(const std::string &value);
+    /**
+     * @brief Get type of frequency randomization
+     * @returns either 'none', 'uniform', or 'exponential'
+     */
+    std::string GetRandomize() const;
 
-        /**
-         * @brief Get type of frequency randomization
-         * @returns either 'none', 'uniform', or 'exponential'
-         */
-        std::string GetRandomize() const;
+  private:
+    void ScheduleSubscribeSchema(ns3::Time delay = ns3::Time("0s"));
+    void ScheduleInterestContent();
 
-      private:
-        void SetupValidator();
+    void SendSubscribeSchema();
+    void SendInterestSchema();
+    void SendInterestContent();
 
-        void SendInterest();
-        void ScheduleNextPacket();
+    void SendInterest(std::string name, ns3::Time lifeTime);
 
-      private:
-        std::string m_interestName;
-        double m_frequency;
-        Time m_interestLifeTime;
+    void ReadValidatorConfRules();
 
-        std::string m_validatorFilename;
-        std::shared_ptr<::ndn::ValidatorConfig> m_validator;
+  private:
+    std::string m_prefix;
+    double m_frequency;
+    ::ns3::Time m_lifeTime;
+    std::string m_randomType;
 
-        std::shared_ptr<::ndn::Face>
-            m_face_NDN_CXX; ///< @brief ndn::Face to allow real-world
-                            ///< applications to work inside ns3
+    std::string m_schemaPrefix;
+    std::string m_validatorConf;
 
-        bool m_firstTime;    ///< @brief First time sending an Interest packet
-        EventId m_sendEvent; ///< @brief EventId of pending "send packet" event
+    std::shared_ptr<::ndn::Face> m_face_NDN_CXX; ///< @brief ndn::Face to allow real-world
+                                                 ///< applications to work inside ns3
 
-        Ptr<RandomVariableStream>
-            m_random; ///< @brief Random generator for packet send
-        std::string m_randomType;
-    };
+    std::map<std::string, ::ns3::EventId> m_sendEvents; ///< @brief pending "send packet" event
+
+    std::shared_ptr<::ndn::ValidatorConfig> m_validator; ///< @brief validates data packets
+    ::ns3::Ptr<::ns3::RandomVariableStream> m_random;    ///< @brief Random generator for packet send
+  };
 
 } // namespace ns3
 

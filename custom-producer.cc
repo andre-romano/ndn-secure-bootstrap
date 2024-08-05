@@ -143,7 +143,7 @@ namespace ns3 {
     }
 
     CustomProducer::CustomProducer()
-        : m_keyChain("pib-memory:", "tpm-memory:"),
+        : m_signCallback(NULL), producerAppStarted(false), m_keyChain("pib-memory:", "tpm-memory:"),
           m_signingInfo(::ndn::security::SigningInfo::SIGNER_TYPE_NULL) {
       ::ndn::SignatureInfo signatureInfo;
       signatureInfo.setValidityPeriod(::ndn::security::ValidityPeriod(
@@ -156,13 +156,13 @@ namespace ns3 {
     void CustomProducer::StartApplication() {
       NS_LOG_FUNCTION_NOARGS();
       App::StartApplication();
+      producerAppStarted = true;
 
       // equivalent to setting interest filter for "/prefix" prefix
       ndn::FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
 
       // create self-signed certificate/identity and serve it
       auto &cert = createCertificate();
-      // loadCertificateTrustAnchor();
       ndn::FibHelper::AddRoute(GetNode(), ::ndn::security::v2::extractKeyNameFromCertName(cert.getName()),
                                m_face, 0);
       NS_LOG_DEBUG("Serving Data prefix: " << m_prefix << " - Certificate: " << cert.getName());
@@ -174,6 +174,7 @@ namespace ns3 {
     void CustomProducer::StopApplication() {
       NS_LOG_FUNCTION_NOARGS();
       App::StopApplication();
+      producerAppStarted = false;
     }
 
     void CustomProducer::OnInterest(std::shared_ptr<const ndn::Interest> interest) {
@@ -191,22 +192,27 @@ namespace ns3 {
     void CustomProducer::OnInterestKey(std::shared_ptr<const ndn::Interest> interest) {
       NS_LOG_FUNCTION(interest->getName());
 
-      auto identity = m_keyChain.getPib().getIdentity(
-          ::ndn::security::v2::extractIdentityFromKeyName(interest->getName()));
-      auto key = identity.getKey(interest->getName());
-      auto cert = std::make_shared<::ndn::security::v2::Certificate>(key.getDefaultCertificate());
+      try {
+        auto identity = m_keyChain.getPib().getIdentity(
+            ::ndn::security::v2::extractIdentityFromKeyName(interest->getName()));
+        auto key = identity.getKey(interest->getName());
+        auto cert = std::make_shared<::ndn::security::v2::Certificate>(key.getDefaultCertificate());
 
-      // to create real wire encoding
-      cert->wireEncode();
+        // to create real wire encoding
+        cert->wireEncode();
 
-      // LOGGING
-      NS_LOG_INFO("Sending Certificate packet: " << cert->getName());
-      // NS_LOG_INFO("Signature: " <<
-      // cert.getSignature().getSignatureInfo());
+        // LOGGING
+        NS_LOG_INFO("Sending Certificate packet: " << cert->getName());
+        // NS_LOG_INFO("Signature: " <<
+        // cert.getSignature().getSignatureInfo());
 
-      // Call trace (for logging purposes) - no way to log certificate
-      // issuing below m_transmittedDatas(cert, this, m_face);
-      m_appLink->onReceiveData(*cert);
+        // Call trace (for logging purposes) - no way to log certificate
+        // issuing below m_transmittedDatas(cert, this, m_face);
+        m_appLink->onReceiveData(*cert);
+      } catch(::ndn::security::pib::Pib::Error& e) {
+        NS_LOG_ERROR("Could not find certificate for: "
+                     << ::ndn::security::v2::extractIdentityFromKeyName(interest->getName()));
+      }
     }
 
     void CustomProducer::OnInterestContent(std::shared_ptr<const ndn::Interest> interest) {
@@ -248,50 +254,28 @@ namespace ns3 {
       // create identity and certificates
       auto identity = m_keyChain.createIdentity(m_identityPrefix);
       auto &key = identity.getDefaultKey();
-      NS_LOG_INFO("Calling sign callback ... ");
-      auto cert = m_signCallback(key.getDefaultCertificate());
-      m_keyChain.setDefaultIdentity(identity); ///< define the default Data packet signer
+      if(m_signCallback != NULL) {
+        NS_LOG_INFO("Calling sign callback ... ");
+        auto cert = m_signCallback(key.getDefaultCertificate());
+        m_keyChain.setDefaultIdentity(identity); ///< define the default Data packet signer
 
-      // sign certificate with trust anchor
-      m_keyChain.deleteCertificate(key, cert.getName());
-      NS_LOG_INFO("Adding signed certificate to local keyChain ... ");
-      m_keyChain.addCertificate(key, cert);
+        // add signed certificate to key chain
+        m_keyChain.deleteCertificate(key, cert.getName());
+        NS_LOG_INFO("Adding signed certificate to local keyChain ... ");
+        m_keyChain.addCertificate(key, cert);
+      } else {
+        NS_LOG_INFO("Sign callback is NULL - Not signing certificate.");
+      }
       return key.getDefaultCertificate();
-    }
-
-    void CustomProducer::loadCertificateTrustAnchor() {
-      NS_LOG_DEBUG("TrustAnchor: " << m_trustAnchorIdentityPrefix
-                                   << " - CertFilename: " << m_trustAnchorCertFilename);
-      auto rootIdentity = m_keyChain.createIdentity(m_trustAnchorIdentityPrefix);
-      auto rootKey = rootIdentity.getDefaultKey();
-      m_keyChain.deleteKey(rootIdentity, rootKey);
-
-      auto newCert = ::ndn::io::load<::ndn::security::v2::Certificate>(m_trustAnchorCertFilename);
-      auto keyParams = ::ndn::security::v2::KeyChain::getDefaultKeyParams();
-      keyParams.setKeyId(newCert->getKeyId());
-      rootKey = m_keyChain.createKey(rootIdentity, keyParams);
-      m_keyChain.addCertificate(rootKey, *newCert);
     }
 
     void CustomProducer::setSignCallback(
         std::function<::ndn::security::v2::Certificate(::ndn::security::v2::Certificate)> cb) {
       m_signCallback = cb;
+      if(producerAppStarted) {
+        createCertificate();
+      }
     }
-
-    // void CustomProducer::signCertificateWithTrustAnchor() {
-    //     // trust anchor identity
-    //     NS_LOG_INFO("Identity: " << m_identityPrefix << " - TrustAnchor:
-    //     " << m_trustAnchorIdentityPrefix); auto rootIdentity =
-    //     m_keyChain.getPib().getIdentity(m_trustAnchorIdentityPrefix);
-
-    //     // local identity
-    //     auto identity =
-    //     m_keyChain.getPib().getIdentity(m_identityPrefix); auto &key =
-    //     identity.getDefaultKey(); auto cert     =
-    //     key.getDefaultCertificate(); m_keyChain.sign(cert,
-    //     ::ndn::security::SigningInfo(rootIdentity));
-    //     m_keyChain.addCertificate(key, cert);
-    // }
 
     void CustomProducer::printKeyChain() {
       for(auto identity : m_keyChain.getPib().getIdentities()) {

@@ -36,33 +36,39 @@ namespace ns3 {
 
     public:
       CustomZone(std::string zoneName);
-      CustomZone(std::string zoneName, int n_Consumers, int n_Producers);
+      CustomZone(std::string zoneName, int n_Producers, int n_Consumers);
       ~CustomZone();
 
-      std::shared_ptr<NodeContainer> getConsumers();
+      std::shared_ptr<NodeContainer> getTrustAnchors();
       std::shared_ptr<NodeContainer> getProducers();
+      std::shared_ptr<NodeContainer> getConsumers();
 
-      void addConsumers(int n);
       void addProducers(int n);
+      void addConsumers(int n);
 
-      void installAllConsumerApps();
+      void installAllTrustAnchorApps();
       void installAllProducerApps();
+      void installAllConsumerApps();
 
     private:
-      void setupTrustAnchor();
+      void addTrustAnchor();
+
       void signProducerCertificates(std::shared_ptr<ns3::ApplicationContainer> producerApps);
 
-      void installConsumerApp(string prefix, string lifetime, double pktFreq, string randomize);
+      void installTrustAnchorApp(double freshness);
       void installProducerApp(string prefix, double freshness, string payloadSize);
+      void installConsumerApp(string prefix, string lifetime, double pktFreq, string randomize);
 
     private:
       std::string m_zoneName;
+      std::string m_schemaPrefix;
 
       std::string m_trustAnchorCert;
       std::string m_validatorConf;
 
       std::shared_ptr<NodeContainer> m_consumers;
       std::shared_ptr<NodeContainer> m_producers;
+      std::shared_ptr<NodeContainer> m_trust_anchors;
 
       // Name m_identityPrefix;
       // Name m_trustAnchorIdentityPrefix;

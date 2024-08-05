@@ -228,10 +228,11 @@ namespace ns3 {
     //     NODES
     //////////////////////
     NS_LOG_INFO("Create NS3 Nodes (consumers, fwd, producers) ...");
-    NodeContainer nodes, consumers, producers, forwarders;
+    NodeContainer nodes, consumers, producers, forwarders, trust_anchors;
     for(const auto &pairNameZone : ndnZones) {
       consumers.Add(*pairNameZone.second->getConsumers());
       producers.Add(*pairNameZone.second->getProducers());
+      trust_anchors.Add(*pairNameZone.second->getTrustAnchors());
     }
     // every node in the network can forward NDN packets (full adhoc WiFi)
     if(n_Forwarders > 0) {
@@ -241,6 +242,7 @@ namespace ns3 {
     nodes.Add(consumers);
     nodes.Add(producers);
     nodes.Add(forwarders);
+    nodes.Add(trust_anchors);
 
     //////////////////////
     //     INSTALL
@@ -293,6 +295,13 @@ namespace ns3 {
     ndn::StrategyChoiceHelper::Install(consumers, "/", "/localhost/nfd/strategy/multicast");
     ndn::StrategyChoiceHelper::Install(forwarders, "/", "/localhost/nfd/strategy/multicast");
     ndn::StrategyChoiceHelper::Install(producers, "/", "/localhost/nfd/strategy/multicast");
+    ndn::StrategyChoiceHelper::Install(trust_anchors, "/", "/localhost/nfd/strategy/multicast");
+
+    // 6.0. Set up TRUST ANCHOR
+    NS_LOG_INFO("Installing Trust Anchor (and Schema) Apps in Zones ...");
+    for(const auto &pairNameZone : ndnZones) {
+      pairNameZone.second->installAllTrustAnchorApps();
+    }
 
     // 6.1. Set up CONSUMER
     NS_LOG_INFO("Installing Consumer Apps in Zones ...");
@@ -333,6 +342,10 @@ namespace ns3 {
     auto customTracerProd = CreateObject<CustomTracer>();
     customTracerProd->SetAttribute("TraceFilename", StringValue("results/dataCustomProd.dat"));
     customTracerProd->SetAttribute("NodesToMonitor", NodeContainerValue(producers));
+
+    auto customTracerAnchor = CreateObject<CustomTracer>();
+    customTracerAnchor->SetAttribute("TraceFilename", StringValue("results/dataCustomAnchor.dat"));
+    customTracerAnchor->SetAttribute("NodesToMonitor", NodeContainerValue(trust_anchors));
 
     // 8. Start simulation
     NS_LOG_INFO("Start simulation!");
