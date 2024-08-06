@@ -80,6 +80,7 @@ if [ -z "$SHOW_LOGS" ]; then
 fi
 if [ -z "$LOGS" ]; then                
     CUSTOM_LOGS=sim_bootsec
+    CUSTOM_LOGS=${CUSTOM_LOGS}:CustomApp
     CUSTOM_LOGS=${CUSTOM_LOGS}:CustomConsumer
     CUSTOM_LOGS=${CUSTOM_LOGS}:CustomProducer
     CUSTOM_LOGS=${CUSTOM_LOGS}:CustomTrustAnchor

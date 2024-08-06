@@ -9,12 +9,11 @@ namespace ns3 {
   namespace ndn {
 
     CustomZone::CustomZone(string zoneName)
-        : m_zoneName(zoneName), m_schemaPrefix(m_zoneName + "/SCHEMA"),
+        : m_zoneName(zoneName), m_schemaPrefix(m_zoneName + "/SCHEMA"), m_signPrefix(m_zoneName + "/SIGN"),
           m_trustAnchorCert("scratch/sim_bootsec/config" + m_zoneName + "_trustanchor.cert"),
           m_validatorConf("scratch/sim_bootsec/config" + m_zoneName + "_validator.conf"),
           m_consumers(make_shared<NodeContainer>()), m_producers(make_shared<NodeContainer>()),
-          m_trust_anchors(make_shared<NodeContainer>()),
-          m_keyChain(std::make_shared<::ndn::security::v2::KeyChain>("pib-memory:", "tpm-memory:")) {
+          m_trust_anchors(make_shared<NodeContainer>()) {
       addTrustAnchor();
     }
     CustomZone::CustomZone(string zoneName, int n_Producers, int n_Consumers) : CustomZone(zoneName) {
@@ -48,56 +47,23 @@ namespace ns3 {
     //     PRIVATE
     //////////////////////
 
-    void CustomZone::addTrustAnchor() {
-      m_trust_anchors->Create(1);
-      // TODO remove code below
-      NS_LOG_INFO("Creating Trust Anchor for '" << m_zoneName << "' zone ...");
-      auto rootIdentity = m_keyChain->createIdentity(m_zoneName);
-      ::ndn::io::save(rootIdentity.getDefaultKey().getDefaultCertificate(), m_trustAnchorCert);
-      //   NS_LOG_INFO("--> Root Identity: " << rootIdentity);
-      NS_LOG_INFO("--> Root Key Type: " << rootIdentity.getDefaultKey().getKeyType());
-      NS_LOG_INFO(rootIdentity.getDefaultKey().getDefaultCertificate());
-    }
-
-    void CustomZone::signProducerCertificates(std::shared_ptr<ns3::ApplicationContainer> producerApps) {
-      //   sign producer certificates with trust anchor
-      auto certValidity = 365; // in days
-      auto rootIdentity =
-          std::make_shared<::ndn::security::pib::Identity>(m_keyChain->getPib().getIdentity(m_zoneName));
-      auto thisKeychain = m_keyChain;
-      for(auto it = producerApps->Begin(); it != producerApps->End(); it++) {
-        auto customProducerApp = DynamicCast<ndn::CustomProducer>(*it);
-        if(!customProducerApp) {
-          NS_LOG_LOGIC("CustomProducer App not found!");
-          continue;
-        }
-        // this callback signs the certificate as it is created by the Producer
-        // (upon Producer App start in NS3)
-        customProducerApp->setSignCallback([=](::ndn::security::v2::Certificate cert) {
-          ::ndn::SignatureInfo signatureInfo;
-          signatureInfo.setValidityPeriod(::ndn::security::ValidityPeriod(
-              ndn::time::system_clock::TimePoint(),
-              ndn::time::system_clock::now() + ndn::time::days(certValidity)));
-          thisKeychain->sign(cert,
-                             ::ndn::security::SigningInfo(*rootIdentity).setSignatureInfo(signatureInfo));
-          return cert;
-        });
-      }
-    }
+    void CustomZone::addTrustAnchor() { m_trust_anchors->Create(1); }
 
     void CustomZone::installConsumerApp(string prefix, string lifetime, double pktFreq, string randomize) {
       auto prefixApp = m_zoneName + prefix;
       NS_LOG_INFO("Installing Consumer App for '" << prefixApp << "' ...");
       // ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
       ndn::AppHelper consumerHelper("CustomConsumer");
-      consumerHelper.SetAttribute("LifeTime", StringValue(lifetime));
       // consumer CBR interest/second
+      consumerHelper.SetPrefix(prefixApp);
       consumerHelper.SetAttribute("Frequency", DoubleValue(pktFreq));
+      consumerHelper.SetAttribute("LifeTime", StringValue(lifetime));
       // consumer randomize send time
       consumerHelper.SetAttribute("Randomize", StringValue(randomize));
+      // (inherited - CustomApp)
+      consumerHelper.SetAttribute("SignPrefix", StringValue(m_signPrefix));
       consumerHelper.SetAttribute("SchemaPrefix", StringValue(m_schemaPrefix));
       consumerHelper.SetAttribute("ValidatorConf", StringValue(m_validatorConf));
-      consumerHelper.SetPrefix(prefixApp);
       // set random start time
       for(auto &consumer : *m_consumers) {
         Ptr<UniformRandomVariable> start_time = CreateObject<UniformRandomVariable>();
@@ -111,26 +77,30 @@ namespace ns3 {
       // ndn::AppHelper producerHelper("ns3::ndn::Producer");
       NS_LOG_INFO("Installing Producer App for '" << prefixApp << "' ...");
       ndn::AppHelper producerHelper("CustomProducer");
-      producerHelper.SetAttribute("Freshness", TimeValue(Seconds(freshness)));
-      producerHelper.SetAttribute("PayloadSize", StringValue(payloadSize)); // payload MTU
       producerHelper.SetPrefix(prefixApp);                                  // ndn prefix
+      producerHelper.SetAttribute("PayloadSize", StringValue(payloadSize)); // payload MTU
+      producerHelper.SetAttribute("Freshness", TimeValue(Seconds(freshness)));
+      // (inherited - CustomApp)
+      producerHelper.SetAttribute("SignPrefix", StringValue(m_signPrefix));
+      producerHelper.SetAttribute("SchemaPrefix", StringValue(m_schemaPrefix));
+      producerHelper.SetAttribute("ValidatorConf", StringValue(m_validatorConf));
       auto producersApps = std::make_shared<ns3::ApplicationContainer>(producerHelper.Install(*m_producers));
       producersApps->Start(Seconds(0.1)); // producers start time
-      // Sign Certificates with Trust Anchor (after they are created inside the Producers)
-      signProducerCertificates(producersApps);
     }
 
     void CustomZone::installTrustAnchorApp(double freshness) {
       // ndn::AppHelper producerHelper("ns3::ndn::Producer");
       NS_LOG_INFO("Installing Trust Anchor App for zone '" << m_zoneName << "' ...");
       ndn::AppHelper trustAnchorHelper("CustomTrustAnchor");
-      trustAnchorHelper.SetAttribute("Freshness",
+      trustAnchorHelper.SetAttribute("ZonePrefix", StringValue(m_zoneName));
+      trustAnchorHelper.SetAttribute("SchemaFreshness",
                                      TimeValue(Seconds(freshness))); // freshness for trust schema file
       trustAnchorHelper.SetAttribute("TrustAnchorCert",
                                      StringValue(m_trustAnchorCert)); // trust anchor .cert FILE
-      trustAnchorHelper.SetAttribute("ValidatorConf", StringValue(m_validatorConf)); // validator .conf FILE
-      trustAnchorHelper.SetAttribute("SchemaPrefix", StringValue(m_schemaPrefix));   // SCHEMA prefix
-      trustAnchorHelper.SetPrefix(m_zoneName);                                       // ndn ZONE prefix
+      // (inherited - CustomApp)
+      trustAnchorHelper.SetAttribute("SignPrefix", StringValue(m_signPrefix));
+      trustAnchorHelper.SetAttribute("SchemaPrefix", StringValue(m_schemaPrefix));
+      trustAnchorHelper.SetAttribute("ValidatorConf", StringValue(m_validatorConf));
       auto trustAnchorApps =
           std::make_shared<ns3::ApplicationContainer>(trustAnchorHelper.Install(*m_trust_anchors));
       trustAnchorApps->Start(Seconds(0.05)); // trust anchors start time

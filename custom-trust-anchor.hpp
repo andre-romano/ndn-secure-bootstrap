@@ -3,23 +3,15 @@
 #ifndef CUSTOM_TRUST_ANCHOR_H_
 #define CUSTOM_TRUST_ANCHOR_H_
 
+// system libs
 #include <functional>
+#include <map>
 #include <set>
 #include <string>
-
-// NS3 / ndnSIM / ndn-cxx includes
-#include "ns3/ndnSIM/apps/ndn-producer.hpp"
-
-#include "ns3/attribute-helper.h"
-#include "ns3/attribute.h"
-#include "ns3/nstime.h"
-#include "ns3/simulator.h"
-
-#include "ns3/ndnSIM/ndn-cxx/security/key-chain.hpp"
-#include "ns3/ndnSIM/ndn-cxx/security/signing-helpers.hpp"
+#include <vector>
 
 // custom includes
-#include "custom-producer.hpp"
+#include "custom-app.hpp"
 
 // namespace ns3 {
 //     class IntMetricSet : public std::set<IntMetric> {};
@@ -41,7 +33,7 @@
 namespace ns3 {
   namespace ndn {
 
-    class CustomTrustAnchor : public CustomProducer {
+    class CustomTrustAnchor : public CustomApp {
 
     public:
       static TypeId GetTypeId();
@@ -54,14 +46,23 @@ namespace ns3 {
       void OnInterestKey(std::shared_ptr<const ndn::Interest> interest) override;
       void OnInterestContent(std::shared_ptr<const ndn::Interest> interest) override;
 
-    private:
-      void setupTrustAnchorCertFile();
+      void OnDataKey(std::shared_ptr<const ndn::Data> data) override;
+      void OnDataContent(std::shared_ptr<const ndn::Data> data) override;
 
     private:
-      std::string m_schemaPrefix;
+      void createTrustAnchor();
+      void readValidationRules();
+
+      void addProducerSchema(std::string identityName);
+      void sendDataSubscribe();
+
+    private:
+      std::string m_zonePrefix;
+      ns3::Time m_schemaFreshness;
 
       std::string m_trustAnchorCert;
-      std::string m_validatorFilename;
+
+      std::string m_schemaRules;
     };
 
   } // namespace ndn

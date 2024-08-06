@@ -3,12 +3,12 @@
 #ifndef CUSTOM_PRODUCER_BOOT_H_
 #define CUSTOM_PRODUCER_BOOT_H_
 
-#include "ns3/ndnSIM/apps/ndn-producer.hpp"
-
 #include "ns3/attribute-helper.h"
 #include "ns3/attribute.h"
 #include "ns3/nstime.h"
 #include "ns3/simulator.h"
+
+#include "ns3/ndnSIM/apps/ndn-producer.hpp"
 
 #include "ns3/ndnSIM/ndn-cxx/security/key-chain.hpp"
 #include "ns3/ndnSIM/ndn-cxx/security/signing-helpers.hpp"
@@ -17,65 +17,39 @@
 #include <set>
 #include <string>
 
-// namespace ns3 {
-//     class IntMetricSet : public std::set<IntMetric> {};
-
-//     std::ostream &operator<<(std::ostream &os, const IntMetricSet
-//     &intMetrics); std::istream &operator>>(std::istream &is, IntMetricSet
-//     &intMetrics);
-
-//     ATTRIBUTE_HELPER_HEADER(IntMetricSet);
-
-//     class IntFwdMap : public ::nfd::fw::IntMetaInfo::IntFwdMap {};
-
-//     std::ostream &operator<<(std::ostream &os, const IntFwdMap &obj);
-//     std::istream &operator>>(std::istream &is, IntFwdMap &obj);
-
-//     ATTRIBUTE_HELPER_HEADER(IntFwdMap);
-// }  // namespace ns3
+#include "custom-app.hpp"
 
 namespace ns3 {
   namespace ndn {
 
-    class CustomProducer : public App {
-    public:
-      using signCallback = std::function<::ndn::security::v2::Certificate(::ndn::security::v2::Certificate)>;
+    class CustomProducer : public CustomApp {
 
     public:
       static TypeId GetTypeId();
       CustomProducer();
       ~CustomProducer();
 
-      // inherited from Application base class.
-      virtual void StartApplication();
+      void StartApplication() override;
+      void StopApplication() override;
 
-      virtual void StopApplication();
+      void OnInterestKey(std::shared_ptr<const ndn::Interest> interest) override;
+      void OnInterestContent(std::shared_ptr<const ndn::Interest> interest) override;
 
-      // (overridden from ndn::App) Callback that will be called when
-      // Interest arrives
-      virtual void OnInterest(std::shared_ptr<const Interest> interest);
+      void OnDataKey(std::shared_ptr<const ndn::Data> data) override;
+      void OnDataContent(std::shared_ptr<const ndn::Data> data) override;
 
-      virtual void OnInterestKey(std::shared_ptr<const ndn::Interest> interest);
-      virtual void OnInterestContent(std::shared_ptr<const ndn::Interest> interest);
-
-      void setSignCallback(signCallback cb);
+      void OnDataValidationFailed(const ndn::Data &data,
+                                  const ::ndn::security::v2::ValidationError &error) override;
 
     protected:
-      const ::ndn::security::v2::Certificate &createCertificate();
-      void printKeyChain();
-
-    protected:
-      Name m_prefix;
-      Name m_postfix;
+      std::string m_prefix;
       uint32_t m_virtualPayloadSize;
       Time m_freshness;
+      std::string m_identityPrefix;
 
-      Name m_identityPrefix;
-      signCallback m_signCallback;
-
-      bool producerAppStarted;
-      ::ndn::security::v2::KeyChain m_keyChain;
-      ::ndn::security::SigningInfo m_signingInfo;
+    private:
+      void scheduleSignInterest();
+      void sendSignInterest();
     };
 
   } // namespace ndn

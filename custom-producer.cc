@@ -2,8 +2,6 @@
 
 #include "custom-producer.hpp"
 
-#include "ns3/ndnSIM/ndn-cxx/util/io.hpp"
-
 #include "ns3/log.h"
 #include "ns3/node-list.h"
 #include "ns3/packet.h"
@@ -11,13 +9,8 @@
 #include "ns3/string.h"
 #include "ns3/uinteger.h"
 
-// #include "ns3/boolean.h"
-// #include "ns3/callback.h"
-// #include "ns3/double.h"
-// #include "ns3/integer.h"
-// #include "ns3/string.h"
-// #include "ns3/uinteger.h"
 #include "ns3/ndnSIM/NFD/daemon/face/generic-link-service.hpp"
+#include "ns3/ndnSIM/ndn-cxx/util/io.hpp"
 
 #include "ns3/ndnSIM/helper/ndn-fib-helper.hpp"
 #include "ns3/ndnSIM/helper/ndn-stack-helper.hpp"
@@ -27,79 +20,6 @@
 #include <memory>
 #include <string>
 
-// namespace ns3 {
-//     ATTRIBUTE_HELPER_CPP(IntMetricSet);
-
-//     std::ostream &operator<<(std::ostream &os, const IntMetricSet
-//     &intMetrics) {
-//         for (auto item : intMetrics) {
-//             os << item;
-//         }
-//         return os;
-//     }
-//     std::istream &operator>>(std::istream &is, IntMetricSet &intMetrics) {
-//         std::string temp;
-//         char data;
-//         while (is >> data) {
-//             if (data != ':') {
-//                 temp.push_back(data);
-//             } else {
-//                 auto intMetric = IntMetric::get(temp);
-//                 if (intMetric.isValid()) {
-//                     intMetrics.insert(intMetric);
-//                 }
-//                 temp.clear();
-//             }
-//         }
-//         return is;
-//     }
-
-//     ATTRIBUTE_HELPER_CPP(IntFwdMap);
-
-//     std::ostream &operator<<(std::ostream &os, const IntFwdMap &obj) {
-//         os << "[";
-//         for (auto item : obj) {
-//             auto fwdProp = item.second;
-//             os << "("
-//                << fwdProp.getMetric() << ","
-//                << fwdProp.getAction() << ","
-//                << fwdProp.getCriteria()
-//                << "),";
-//         }
-//         os << "]";
-//         return os;
-//     }
-//     std::istream &operator>>(std::istream &is, IntFwdMap &obj) {
-//         std::string temp;
-//         IntMetric metric;
-//         IntFwdAction action;
-//         IntFwdCriteria criteria;
-//         char data;
-//         while (is >> data) {
-//             if (data == '[' || data == ']')
-//                 continue;
-//             else if (data != '(' && data != ',' && data != ')') {
-//                 temp.push_back(data);
-//             } else if (!metric.isValid()) {
-//                 metric = IntMetric::get(temp);
-//                 temp.clear();
-//             } else if (!action.isValid()) {
-//                 action = IntFwdAction::getTypeStatic(temp);
-//                 temp.clear();
-//             } else {
-//                 criteria = IntFwdCriteria::getTypeStatic(temp);
-//                 temp.clear();
-//                 obj[metric] = IntFwdProperty(metric, action, criteria);
-//                 metric      = IntMetric();
-//                 action      = IntFwdAction();
-//                 criteria    = IntFwdCriteria();
-//             }
-//         }
-//         return is;
-//     }
-
-// }  // namespace ns3
-
 NS_LOG_COMPONENT_DEFINE("CustomProducer");
 
 namespace ns3 {
@@ -108,117 +28,77 @@ namespace ns3 {
     // Necessary if you are planning to use ndn::AppHelper
     NS_OBJECT_ENSURE_REGISTERED(CustomProducer);
 
+    //////////////////////
+    //     PUBLIC
+    //////////////////////
+
     TypeId CustomProducer::GetTypeId() {
       static TypeId tid =
           TypeId("CustomProducer")
-              .SetParent<ndn::App>()
+              .SetParent<CustomApp>()
               .AddConstructor<CustomProducer>()
               .AddAttribute("Prefix", "Name of the Interest", StringValue("/"),
-                            MakeNameAccessor(&CustomProducer::m_prefix), MakeNameChecker())
-              .AddAttribute("Postfix",
-                            "Postfix that is added to the output data (e.g., for "
-                            "adding producer-uniqueness)",
-                            StringValue("/"), MakeNameAccessor(&CustomProducer::m_postfix), MakeNameChecker())
+                            MakeStringAccessor(&CustomProducer::m_prefix), MakeStringChecker())
               .AddAttribute("PayloadSize", "Virtual payload size for Content packets", UintegerValue(1024),
                             MakeUintegerAccessor(&CustomProducer::m_virtualPayloadSize),
                             MakeUintegerChecker<uint32_t>())
-              .AddAttribute("Freshness",
-                            "Freshness of data packets, if 0, then unlimited "
-                            "freshness",
+              .AddAttribute("Freshness", "Freshness of data packets, if 0, then unlimited freshness",
                             TimeValue(Seconds(0)), MakeTimeAccessor(&CustomProducer::m_freshness),
                             MakeTimeChecker())
               .AddAttribute("IdentityPrefix", "Name of the Identity of the App", StringValue(""),
-                            MakeNameAccessor(&CustomProducer::m_identityPrefix), MakeNameChecker());
-      // .AddAttribute("IntMetrics",
-      //               "Set of INT metrics to collect",
-      //               IntMetricSetValue(),
-      //               MakeIntMetricSetAccessor(&CustomProducer::m_collectMetrics),
-      //               MakeIntMetricSetChecker())
-      // .AddAttribute("IntFwd",
-      //               "INT Fwd commands",
-      //               IntFwdMapValue(),
-      //               MakeIntFwdMapAccessor(&CustomProducer::m_fwdMap),
-      //               MakeIntFwdMapChecker());
+                            MakeStringAccessor(&CustomProducer::m_identityPrefix), MakeStringChecker());
       return tid;
     }
 
-    CustomProducer::CustomProducer()
-        : m_signCallback(NULL), producerAppStarted(false), m_keyChain("pib-memory:", "tpm-memory:"),
-          m_signingInfo(::ndn::security::SigningInfo::SIGNER_TYPE_NULL) {
-      ::ndn::SignatureInfo signatureInfo;
-      signatureInfo.setValidityPeriod(::ndn::security::ValidityPeriod(
-          ndn::time::system_clock::TimePoint(), ndn::time::system_clock::now() + ndn::time::days(365)));
-      m_signingInfo.setSignatureInfo(signatureInfo);
-    }
-
+    CustomProducer::CustomProducer() : CustomApp() {}
     CustomProducer::~CustomProducer() {}
 
     void CustomProducer::StartApplication() {
       NS_LOG_FUNCTION_NOARGS();
-      App::StartApplication();
-      producerAppStarted = true;
+      CustomApp::StartApplication();
 
       // equivalent to setting interest filter for "/prefix" prefix
       ndn::FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
 
       // create self-signed certificate/identity and serve it
-      auto &cert = createCertificate();
+      m_identityPrefix = (m_identityPrefix == "" ? m_prefix : m_identityPrefix);
+      auto &cert = createCertificate(m_identityPrefix);
       ndn::FibHelper::AddRoute(GetNode(), ::ndn::security::v2::extractKeyNameFromCertName(cert.getName()),
                                m_face, 0);
       NS_LOG_DEBUG("Serving Data prefix: " << m_prefix << " - Certificate: " << cert.getName());
 
-      // NS_LOG_DEBUG(cert);
+      // disable validation until producer cert is OK
+      setShouldValidateData(false);
+
+      scheduleSignInterest();    ///< @brief request for certificate signing
+      scheduleSubscribeSchema(); ///< @brief subcribe for SCHEMA updates
+
       printKeyChain();
     }
 
     void CustomProducer::StopApplication() {
       NS_LOG_FUNCTION_NOARGS();
-      App::StopApplication();
-      producerAppStarted = false;
-    }
-
-    void CustomProducer::OnInterest(std::shared_ptr<const ndn::Interest> interest) {
-      ndn::App::OnInterest(interest); // forward call to perform app-level tracing
-
-      // Note that Interests send out by the app will not be sent back to
-      // the app !
-      if(::ndn::security::v2::isValidKeyName(interest->getName())) {
-        OnInterestKey(interest);
-      } else {
-        OnInterestContent(interest);
-      }
+      CustomApp::StopApplication();
     }
 
     void CustomProducer::OnInterestKey(std::shared_ptr<const ndn::Interest> interest) {
+      CustomApp::OnInterestKey(interest);
+
       NS_LOG_FUNCTION(interest->getName());
-
-      try {
-        auto identity = m_keyChain.getPib().getIdentity(
-            ::ndn::security::v2::extractIdentityFromKeyName(interest->getName()));
-        auto key = identity.getKey(interest->getName());
-        auto cert = std::make_shared<::ndn::security::v2::Certificate>(key.getDefaultCertificate());
-
-        // to create real wire encoding
-        cert->wireEncode();
-
-        // LOGGING
-        NS_LOG_INFO("Sending Certificate packet: " << cert->getName());
-        // NS_LOG_INFO("Signature: " <<
-        // cert.getSignature().getSignatureInfo());
-
-        // Call trace (for logging purposes) - no way to log certificate
-        // issuing below m_transmittedDatas(cert, this, m_face);
-        m_appLink->onReceiveData(*cert);
-      } catch(::ndn::security::pib::Pib::Error& e) {
-        NS_LOG_ERROR("Could not find certificate for: "
-                     << ::ndn::security::v2::extractIdentityFromKeyName(interest->getName()));
-      }
+      sendCertificate(interest);
     }
 
     void CustomProducer::OnInterestContent(std::shared_ptr<const ndn::Interest> interest) {
-      // NS_LOG_FUNCTION(interest->getName());
+      CustomApp::OnInterestContent(interest);
 
-      Name dataName(interest->getName());
+      auto dataName = interest->getName();
+      NS_LOG_FUNCTION(dataName);
+
+      if(dataName.isPrefixOf(m_schemaPrefix) || dataName.isPrefixOf(m_signPrefix)) {
+        NS_LOG_INFO("Dropping interest '" << dataName << "', as producer does not reply for SCHEMA prefixes");
+        return;
+      }
+
       auto data = make_shared<Data>();
       data->setName(dataName);
       data->setFreshnessPeriod(::ndn::time::milliseconds(m_freshness.GetMilliSeconds()));
@@ -227,67 +107,59 @@ namespace ns3 {
       // Sign Data packet with default identity
       m_keyChain.sign(*data, m_signingInfo);
 
-      // to create real wire encoding
-      data->wireEncode();
-
-      // LOGGING
-      NS_LOG_INFO("Sending Data packet: " << data->getName());
-      // NS_LOG_INFO("Signature: " <<
-      // data->getSignature().getSignatureInfo());
-
-      // Call trace (for logging purposes)
-      m_transmittedDatas(data, this, m_face);
-      m_appLink->onReceiveData(*data);
+      // send packet
+      sendData(data);
     }
 
-    const ::ndn::security::v2::Certificate &CustomProducer::createCertificate() {
-      if(m_identityPrefix.size() == 0) {
-        m_identityPrefix = m_prefix;
-      }
-      NS_LOG_INFO("Identity: " << m_identityPrefix);
-      try {
-        // clear keychain from any identical identities
-        m_keyChain.deleteIdentity(m_keyChain.getPib().getIdentity(m_identityPrefix));
-      } catch(::ndn::security::pib::Pib::Error &e) {
-        // no identity found, proceed with the new identity creation
-      }
-      // create identity and certificates
-      auto identity = m_keyChain.createIdentity(m_identityPrefix);
-      auto &key = identity.getDefaultKey();
-      if(m_signCallback != NULL) {
-        NS_LOG_INFO("Calling sign callback ... ");
-        auto cert = m_signCallback(key.getDefaultCertificate());
-        m_keyChain.setDefaultIdentity(identity); ///< define the default Data packet signer
+    void CustomProducer::OnDataKey(std::shared_ptr<const ndn::Data> data) {
+      CustomApp::OnDataKey(data);
 
-        // add signed certificate to key chain
-        m_keyChain.deleteCertificate(key, cert.getName());
-        NS_LOG_INFO("Adding signed certificate to local keyChain ... ");
-        m_keyChain.addCertificate(key, cert);
-      } else {
-        NS_LOG_INFO("Sign callback is NULL - Not signing certificate.");
-      }
-      return key.getDefaultCertificate();
-    }
-
-    void CustomProducer::setSignCallback(
-        std::function<::ndn::security::v2::Certificate(::ndn::security::v2::Certificate)> cb) {
-      m_signCallback = cb;
-      if(producerAppStarted) {
-        createCertificate();
+      NS_LOG_INFO("Received KEY for '" << data->getName() << "'");
+      if(data->getName().isPrefixOf(m_prefix + "/KEY") && isDataValid()) {
+        ::ndn::security::v2::Certificate cert(*data);
+        addCertificate(cert);
       }
     }
 
-    void CustomProducer::printKeyChain() {
-      for(auto identity : m_keyChain.getPib().getIdentities()) {
-        NS_LOG_DEBUG("Identity: " << identity.getName());
-        for(auto key : identity.getKeys()) {
-          NS_LOG_DEBUG("Key: " << key.getName() << " - Type: " << key.getKeyType());
-          for(auto cert : key.getCertificates()) {
-            NS_LOG_DEBUG(cert);
-          }
-        }
+    void CustomProducer::OnDataContent(std::shared_ptr<const ndn::Data> data) {
+      CustomApp::OnDataContent(data);
+
+      if(data->getName().isPrefixOf(m_signPrefix)) {
+        // we have received the signed certificate from trust anchor
+        ::ndn::Data newData = *data;
+        newData.setName(data->getName().getSubName(m_signPrefix.size()));
+        auto newDataPtr = std::make_shared<::ndn::Data>(newData);
+        // validate certificate
+        setShouldValidateData(true);
+        CustomApp::OnData(newDataPtr);
+      }
+      checkOnDataSchemaProtocol(data);
+    }
+
+    void CustomProducer::OnDataValidationFailed(const ndn::Data &data,
+                                                const ::ndn::security::v2::ValidationError &error) {
+      CustomApp::OnDataValidationFailed(data, error);
+
+      if(data.getName().isPrefixOf(m_prefix + "/KEY")) {
+        setShouldValidateData(false);
       }
     }
+
+    //////////////////////
+    //     PRIVATE
+    //////////////////////
+
+    void CustomProducer::scheduleSignInterest() {
+      if(!hasEvent(m_signPrefix)) {
+        m_sendEvents[m_signPrefix] =
+            Simulator::Schedule(Seconds(0.0), &CustomProducer::sendSignInterest, this);
+      } else if(!isEventRunning(m_signPrefix)) {
+        m_sendEvents[m_signPrefix] =
+            Simulator::Schedule(m_signLifetime, &CustomProducer::sendSignInterest, this);
+      }
+    }
+
+    void CustomProducer::sendSignInterest() { sendInterest(m_signPrefix, m_signLifetime); }
 
   } // namespace ndn
 } // namespace ns3

@@ -28,6 +28,7 @@
 // custom and auxiliary
 #include "custom-consumer.hpp"
 #include "custom-producer.hpp"
+#include "custom-trust-anchor.hpp"
 
 namespace ns3 {
   namespace ndn {
@@ -62,6 +63,7 @@ namespace ns3 {
     private:
       std::string m_zoneName;
       std::string m_schemaPrefix;
+      std::string m_signPrefix;
 
       std::string m_trustAnchorCert;
       std::string m_validatorConf;
