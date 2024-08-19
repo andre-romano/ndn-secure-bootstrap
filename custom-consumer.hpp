@@ -50,7 +50,7 @@ namespace ns3 {
       void sendInterestContent();
 
     private:
-      std::string m_prefix;
+      ::ndn::Name m_prefix;
       double m_frequency;
       ::ns3::Time m_lifeTime;
       std::string m_randomType;

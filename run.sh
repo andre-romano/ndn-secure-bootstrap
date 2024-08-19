@@ -88,8 +88,8 @@ if [ -z "$LOGS" ]; then
     # CUSTOM_LOGS=${CUSTOM_LOGS}:CustomTracer
         
     LOG_NDN_SECURITY=ndn-cxx.ndn.security.pib.Pib
-    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateBundleFetcher
     # LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateCache
+    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateBundleFetcher
     LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateFetcher
     LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateFetcher.FromNetwork
     # LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.KeyChain
@@ -104,8 +104,8 @@ if [ -z "$LOGS" ]; then
     LOGS=${LOGS}:${LOG_NDN_SECURITY}
     LOGS=${LOGS}:ndn.Consumer
     LOGS=${LOGS}:ndn.Producer
-    # LOGS=${LOGS}:ndn-cxx.nfd.Forwarder
-    # LOGS=${LOGS}:ndn-cxx.nfd.Strategy    
+    LOGS=${LOGS}:ndn-cxx.nfd.Forwarder
+    LOGS=${LOGS}:ndn-cxx.nfd.Strategy    
     
 elif [ "$LOGS" == ":" ]; then    
     # if user typed LOGS=: , logs will be disabled in NS3 simulation

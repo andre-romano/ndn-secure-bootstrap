@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <memory>
 
 // ns3 modules
 #include "ns3/adhoc-wifi-mac.h"

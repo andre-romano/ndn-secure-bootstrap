@@ -38,7 +38,7 @@ namespace ns3 {
               .SetParent<CustomApp>()
               .AddConstructor<CustomTrustAnchor>()
               .AddAttribute("ZonePrefix", "Zone name prefix", StringValue("/"),
-                            MakeStringAccessor(&CustomTrustAnchor::m_zonePrefix), MakeStringChecker())
+                            MakeNameAccessor(&CustomTrustAnchor::m_zonePrefix), MakeNameChecker())
               .AddAttribute("SchemaFreshness",
                             "Freshness of Schema data packets, if 0, then unlimited "
                             "freshness",
@@ -57,9 +57,14 @@ namespace ns3 {
       NS_LOG_FUNCTION_NOARGS();
       ndn::CustomApp::StartApplication();
 
-      // create trust anchor identity, cert file (public key)
+      // clear validation rules , create trust anchor cert file , write trust schema
+      clearValidationRules();
       createTrustAnchor();
-      readValidationRules();
+      writeValidationRules();
+
+      // disable validation temporarily
+      // TODO fix validation in trust anchor
+      setShouldValidateData(false);
 
       // SCHEMA to CONSUMERS / PRODUCERS
       ndn::FibHelper::AddRoute(GetNode(), m_schemaPrefix, m_face, 0);
@@ -78,59 +83,79 @@ namespace ns3 {
     }
 
     void CustomTrustAnchor::OnInterestKey(std::shared_ptr<const ndn::Interest> interest) {
+      NS_LOG_FUNCTION(interest->getName());
       ndn::CustomApp::OnInterestKey(interest);
-      // empty on purpose
-    }
 
-    void CustomTrustAnchor::OnInterestContent(std::shared_ptr<const ndn::Interest> interest) {
-      ndn::CustomApp::OnInterestContent(interest);
-
+      // define Data packet response
       auto dataName = interest->getName();
       auto data = make_shared<Data>();
       data->setName(dataName);
 
-      if(dataName.isPrefixOf(m_schemaPrefix)) {
-        if(dataName.isPrefixOf(m_schemaContentPrefix)) {
-          data->setFreshnessPeriod(::ndn::time::milliseconds(m_schemaFreshness.GetMilliSeconds()));
-          auto buffer = std::make_shared<::ndn::Buffer>(m_schemaRules.begin(), m_schemaRules.end());
-          data->setContent(buffer);
-
-          // Sign Data with default identity, send packet
-          m_keyChain.sign(*data, m_signingInfo);
-          sendData(data);
-          return;
-        }
-      } else if(dataName.isPrefixOf(m_signPrefix)) {
+      if(m_signPrefix.isPrefixOf(dataName)) {
         // request key from producer
-        auto keyName = dataName.getSubName(m_signPrefix.size()).toUri();
-        sendInterest(keyName, m_signLifetime);
+        auto keyName = dataName.getSubName(m_signPrefix.size(), dataName.size() - m_signPrefix.size());
+        NS_LOG_INFO("Sending KEY request for '" << keyName << "' ...");
+        sendInterest(keyName, m_signLifetime, true);
         return;
       }
     }
 
-    void CustomTrustAnchor::OnDataKey(std::shared_ptr<const ndn::Data> data) {
-      CustomApp::OnDataKey(data);
+    void CustomTrustAnchor::OnInterestContent(std::shared_ptr<const ndn::Interest> interest) {
+      NS_LOG_FUNCTION(interest->getName());
+      ndn::CustomApp::OnInterestContent(interest);
 
-      ::ndn::Data newData = *data;
-      auto newDataPtr = std::make_shared<::ndn::Data>(newData);
+      // define Data packet response
+      auto dataName = interest->getName();
+      auto data = make_shared<Data>();
+      data->setName(dataName);
+
+      if(m_schemaContentPrefix.isPrefixOf(dataName)) {
+        NS_LOG_INFO("Sending SCHEMA content for '" << m_schemaContentPrefix << "' ...");
+        data->setFreshnessPeriod(::ndn::time::milliseconds(m_schemaFreshness.GetMilliSeconds()));
+        std::string schemaRules = getValidationRules();
+        auto buffer = std::make_shared<::ndn::Buffer>(schemaRules.begin(), schemaRules.end());
+        data->setContent(buffer);
+
+        // Sign Data with default identity, send packet
+        m_keyChain.sign(*data, m_signingInfo);
+        sendData(data);
+        return;
+      }
+    }
+
+    void CustomTrustAnchor::OnDataCertificate(std::shared_ptr<const ndn::Data> data) {
+      NS_LOG_FUNCTION(data->getName());
+      CustomApp::OnDataCertificate(data);
+
+      // Sign certificate with default identity
+      auto cert = std::make_shared<::ndn::Data>(*data);
+      m_keyChain.sign(*cert, m_signingInfo);
+
+      // get keyname and buffer info
+      auto keyName = ::ndn::security::v2::extractKeyNameFromCertName(cert->getName());
+      auto identityName = ::ndn::security::v2::extractIdentityFromKeyName(keyName);
+
+      // create SIGN Data packet
+      // TODO fix code below (data packet not being recv in neighbors)
+      auto newData = std::make_shared<::ndn::Data>();
+      // newData->setName("/zoneA/SIGN/zoneA/test/prefix/KEY");
+      newData->setName(m_signPrefix.deepCopy().append(cert->getName()));
+      newData->setFreshnessPeriod(::ndn::time::milliseconds(2000));
+      // newData->setFreshnessPeriod(::ndn::time::milliseconds(m_signLifetime.GetMilliSeconds()));
+      // newData->setContent(cert->wireEncode());
+      newData->setContent(std::make_shared<::ndn::Buffer>(1024));
 
       // Sign Data with default identity, send packet
-      m_keyChain.sign(*newDataPtr, m_signingInfo);
-
-      // change name to match SIGN request
-      ::ndn::Name newName = m_signPrefix;
-      newName.append(newDataPtr->getName());
-      newDataPtr->setName(newName);
-
-      // send data
-      sendData(newDataPtr);
+      m_keyChain.sign(*newData, m_signingInfo);
+      // Simulator::Schedule(Seconds(0.0), &CustomTrustAnchor::sendData, this, newData);
+      sendData(newData);
 
       // updateSchema
-      auto identityName = ::ndn::security::v2::extractIdentityFromKeyName(data->getName()).toUri();
       addProducerSchema(identityName);
     }
 
     void CustomTrustAnchor::OnDataContent(std::shared_ptr<const ndn::Data> data) {
+      NS_LOG_FUNCTION(data->getName());
       CustomApp::OnDataContent(data);
     }
 
@@ -141,14 +166,13 @@ namespace ns3 {
     void CustomTrustAnchor::createTrustAnchor() {
       NS_LOG_INFO("Creating Trust Anchor .cert file for '" << m_zonePrefix << "' zone ...");
       ::ndn::io::save(createCertificate(m_zonePrefix), m_trustAnchorCert);
+      addTrustAnchor(m_trustAnchorCert);
     }
 
-    void CustomTrustAnchor::readValidationRules() {
-      // TODO read file mValidationConf into  m_schemaRules
-    }
-
-    void CustomTrustAnchor::addProducerSchema(std::string identityName) {
-      // TODO update trust schema with new producer
+    void CustomTrustAnchor::addProducerSchema(::ndn::Name identityName) {
+      std::string dataRegex = "^" + getValidationRegex(identityName) + getKeySuffixRegex();
+      std::string keyLocatorRegex = "^" + getValidationRegex(m_zonePrefix) + getKeySuffixRegex();
+      addValidationRule(dataRegex, keyLocatorRegex);
 
       // inform the network about the changes in the schema
       sendDataSubscribe();
@@ -160,6 +184,9 @@ namespace ns3 {
       data->setName(m_schemaSubscribePrefix);
       data->setFreshnessPeriod(::ndn::time::milliseconds(m_schemaFreshness.GetMilliSeconds()));
       data->setContent(std::make_shared<::ndn::Buffer>());
+
+      // Sign Data with default identity, send packet
+      m_keyChain.sign(*data, m_signingInfo);
       sendData(data);
     }
 

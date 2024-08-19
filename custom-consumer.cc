@@ -40,7 +40,7 @@ namespace ns3 {
               .SetParent<CustomApp>()
               .AddConstructor<CustomConsumer>()
               .AddAttribute("Prefix", "Name of the Interest", StringValue("/"),
-                            MakeStringAccessor(&CustomConsumer::m_prefix), MakeStringChecker())
+                            MakeNameAccessor(&CustomConsumer::m_prefix), MakeNameChecker())
               .AddAttribute("Frequency", "Frequency of interest packets", StringValue("1.0"),
                             MakeDoubleAccessor(&CustomConsumer::m_frequency), MakeDoubleChecker<double>())
               .AddAttribute("LifeTime", "Lifetime of interest packets (in seconds)", StringValue("2s"),
@@ -102,11 +102,12 @@ namespace ns3 {
     //////////////////////
 
     void CustomConsumer::scheduleInterestContent() {
-      if(!hasEvent(m_prefix)) {
-        m_sendEvents[m_prefix] =
+      auto consumerPrefixStr = m_prefix.toUri();
+      if(!hasEvent(consumerPrefixStr)) {
+        m_sendEvents[consumerPrefixStr] =
             Simulator::Schedule(Seconds(0.0), &CustomConsumer::sendInterestContent, this);
-      } else if(!isEventRunning(m_prefix)) {
-        m_sendEvents[m_prefix] =
+      } else if(!isEventRunning(consumerPrefixStr)) {
+        m_sendEvents[consumerPrefixStr] =
             Simulator::Schedule((m_random == 0) ? Seconds(1.0 / m_frequency) : Seconds(m_random->GetValue()),
                                 &CustomConsumer::sendInterestContent, this);
       }

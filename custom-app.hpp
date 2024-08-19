@@ -18,10 +18,21 @@
 
 // system libs
 #include <functional>
+#include <iostream>
 #include <map>
+#include <memory>
+#include <regex>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
+
+// boost libs
+#include <boost/property_tree/info_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
+
+// custom includes
+#include "custom-utils.hpp"
 
 // namespace ns3 {
 //     class IntMetricSet : public std::set<IntMetric> {};
@@ -46,7 +57,11 @@ namespace ns3 {
     class CustomApp : public App {
 
     public:
+      static bool isValidKeyName(const ::ndn::Name &keyName);
+      static bool isValidCertificateName(const ::ndn::Name &certName);
+
       static TypeId GetTypeId();
+
       CustomApp();
       ~CustomApp();
 
@@ -60,7 +75,7 @@ namespace ns3 {
       virtual void OnInterestKey(std::shared_ptr<const ndn::Interest> interest);
       virtual void OnInterestContent(std::shared_ptr<const ndn::Interest> interest);
 
-      virtual void OnDataKey(std::shared_ptr<const ndn::Data> data);
+      virtual void OnDataCertificate(std::shared_ptr<const ndn::Data> data);
       virtual void OnDataContent(std::shared_ptr<const ndn::Data> data);
 
       // data validation callbacks
@@ -72,10 +87,22 @@ namespace ns3 {
       void setSignValidityPeriod(int daysValid);
       void setShouldValidateData(bool validate);
 
-      void readValidationRules(std::string filename);
+      void readValidationRules();
       void readValidationRules(std::shared_ptr<const ndn::Data> data);
 
-      void sendInterest(std::string name, ns3::Time lifeTime);
+      void writeValidationRules();
+
+      void clearValidationRules();
+      std::string getValidationRules();
+
+      void addValidationRule(std::string dataRegex, std::string keyLocatorRegex);
+      void addTrustAnchor(std::string filename);
+
+      std::string getValidationRegex(::ndn::Name prefix);
+      std::string getKeySuffixRegex();
+
+      void sendInterest(::ndn::Name name, ns3::Time lifeTime, bool canBePrefix = false);
+      void sendInterest(std::string name, ns3::Time lifeTime, bool canBePrefix = false);
       void sendInterest(std::shared_ptr<ndn::Interest> data);
 
       void sendData(std::shared_ptr<ndn::Data> data);
@@ -100,27 +127,33 @@ namespace ns3 {
 
       void checkOnDataSchemaProtocol(std::shared_ptr<const ndn::Data> data);
 
+    private:
+      void reloadValidationRules();
+
     protected:
       std::shared_ptr<::ndn::Face> m_face_NDN_CXX; ///< @brief ndn::Face to allow real-world
                                                    ///< applications to work inside ns3
 
-      std::shared_ptr<::ndn::ValidatorConfig> m_validator; ///< @brief validates data packets
       std::string m_validatorConf;
+
+      ::ndn::Name m_schemaPrefix;        ///< @brief common SCHEMA prefix
+      ::ndn::Name m_schemaContentPrefix; ///< @brief SCHEMA content prefix
+
+      ::ndn::Name m_schemaSubscribePrefix; ///< @brief SCHEMA subscribe prefix
+      ns3::Time m_schemaSubscribeLifetime; ///< @brief SCHEMA subscribe lifetime
+
+      ::ndn::Name m_signPrefix; ///< @brief common SIGN prefix (to request trust anchor signing)
+      ns3::Time m_signLifetime; ///< @brief lifetime of SIGN interests
 
       ::ndn::security::v2::KeyChain m_keyChain;
       ::ndn::security::SigningInfo m_signingInfo;
 
-      std::string m_schemaPrefix;        ///< @brief common SCHEMA prefix
-      std::string m_schemaContentPrefix; ///< @brief SCHEMA content prefix
-
-      std::string m_schemaSubscribePrefix; ///< @brief SCHEMA subscribe prefix
-      ns3::Time m_schemaSubscribeLifetime; ///< @brief SCHEMA subscribe lifetime
-
-      std::string m_signPrefix; ///< @brief common SIGN prefix (to request trust anchor signing)
-      ns3::Time m_signLifetime; ///< @brief lifetime of SIGN interests
-
       std::map<std::string, ::ns3::EventId> m_sendEvents; ///< @brief pending "send packet" event
+
     private:
+      std::shared_ptr<::ndn::ValidatorConfig> m_validator; ///< @brief validates data packets
+      std::shared_ptr<::ndn::security::v2::validator_config::ConfigSection> m_validatorRoot;
+
       bool m_shouldValidateData;
       bool m_dataIsValid;
     };
