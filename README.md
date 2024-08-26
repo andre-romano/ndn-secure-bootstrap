@@ -187,19 +187,19 @@ sequenceDiagram
     participant Producer
     participant Zone Controller
 
-    Producer->>Zone Controller: I: /<zone>/SCHEMA/SUBSCRIBE    
+    Producer->>Zone Controller: I1: /<zone>/SCHEMA/SUBSCRIBE    
     Producer->>Producer: createIdentityPKI()
-    Producer->>Zone Controller: I: /<zone>/AUTH/<producer_identity>
-    Zone Controller->>Producer: I: /<zone>/CHG/<producer_identity>
-    Producer->>Zone Controller: D: /<zone>/CHG/<producer_identity>
-    Zone Controller->>Producer: D: /<zone>/AUTH/<producer_identity>
-    Producer->>Zone Controller: I: /<zone>/SIGN/<producer_identity>/KEY/<>
-    Zone Controller->>Producer: I: /<producer_identity>/KEY/<>?canBePrefix
-    Producer->>Zone Controller: D: /<producer_identity>/KEY/<>{3,3}
+    Producer->>Zone Controller: I2: /<zone>/AUTH/<producer_identity>
+    Zone Controller->>Producer: I3: /<zone>/CHG/<producer_identity>
+    Producer->>Zone Controller: D3: /<zone>/CHG/<producer_identity>
+    Zone Controller->>Producer: D2: /<zone>/AUTH/<producer_identity>
+    Producer->>Zone Controller: I4: /<zone>/SIGN/<producer_identity>/KEY/<>?canBePrefix
+    Zone Controller->>Producer: I5: /<producer_identity>/KEY/<>?canBePrefix
+    Producer->>Zone Controller: D5: /<producer_identity>/KEY/<>{3,3}
     Zone Controller->>Zone Controller: signCertWithTrustAnchor()
     Zone Controller->>Zone Controller: addSignedCertTrustSchema()
-    Zone Controller->>Producer: D: /<zone>/SIGN/<producer_identity>/KEY/<>
-    Zone Controller->>Producer: D: /<zone>/SCHEMA/SUBSCRIBE    
-    Producer->>Zone Controller: I: /<zone>/SCHEMA/CONTENT
-    Zone Controller->>Producer: D: /<zone>/SCHEMA/CONTENT    
+    Zone Controller->>Producer: D4: /<zone>/SIGN/<producer_identity>/KEY/<>{3,3}
+    Zone Controller->>Producer: D1: /<zone>/SCHEMA/SUBSCRIBE    
+    Producer->>Zone Controller: I6: /<zone>/SCHEMA/CONTENT
+    Zone Controller->>Producer: D6: /<zone>/SCHEMA/CONTENT    
 ```

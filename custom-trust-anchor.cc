@@ -148,6 +148,9 @@ namespace ns3 {
       // Sign Data with default identity, send packet
       m_keyChain.sign(*newData, m_signingInfo);
       // Simulator::Schedule(Seconds(0.0), &CustomTrustAnchor::sendData, this, newData);
+      NS_LOG_INFO(newData->getName() << " - " << newData->getContentType() << " - "
+                                     << " - " << newData->getContent());
+
       sendData(newData);
 
       // updateSchema
@@ -175,7 +178,7 @@ namespace ns3 {
       addValidationRule(dataRegex, keyLocatorRegex);
 
       // inform the network about the changes in the schema
-      sendDataSubscribe();
+      Simulator::Schedule(Seconds(0.01), &CustomTrustAnchor::sendDataSubscribe, this);
     }
 
     // inform network about SCHEMA UPDATES

@@ -106,6 +106,7 @@ if [ -z "$LOGS" ]; then
     LOGS=${LOGS}:ndn.Producer
     LOGS=${LOGS}:ndn-cxx.nfd.Forwarder
     LOGS=${LOGS}:ndn-cxx.nfd.Strategy    
+    LOGS=${LOGS}:ndn.AppLinkService
     
 elif [ "$LOGS" == ":" ]; then    
     # if user typed LOGS=: , logs will be disabled in NS3 simulation
