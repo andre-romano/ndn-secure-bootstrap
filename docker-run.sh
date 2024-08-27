@@ -22,6 +22,7 @@ if ! [ -e "./ndnSIM/ns-3/scratch/sim_bootsec" ]; then
     find $(pwd)/ndnSIM/ns-3/scratch/sim_bootsec/.vscode/ -type f -exec ln -sf {} $(pwd)/ndnSIM/ns-3/.vscode/ \;
 fi
 echo "Type in terminal the command: "
-echo "# ./run.sh"
+echo "# cd scratch/sim_bootsec "
+echo "# ./run.sh "
 $DOCKER_CMD run --name $DOCKER_IMAGE_NAME -it -v ./ndnSIM:/ndnSIM localhost/$DOCKER_IMAGE_NAME ||
 $DOCKER_CMD start -ai $DOCKER_IMAGE_NAME

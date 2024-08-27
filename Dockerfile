@@ -1,4 +1,4 @@
-FROM docker.io/andreromano/ndnsim:2.9
+FROM docker.io/andreromano/ndnsim:2.8
 RUN apt-get update && \
     apt-get install -y --no-install-recommends wget tar unzip python3 && \
     mkdir -p /opt && \
