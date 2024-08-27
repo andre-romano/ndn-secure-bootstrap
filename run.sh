@@ -16,6 +16,10 @@ MOBILITY_LOG=${RESULTS_DIR}/mobility-trace.log
 PARSE_LOGFILE=./readLogfile.py
 CREATE_MOBILITY_TRACE=./createNS3mobilityTrace.sh
 
+# create link from /ndnSIM to ~/ndnSIM
+rm -f ~/ndnSIM
+ln -sf /ndnSIM ~/ndnSIM
+
 mkdir -p $RESULTS_DIR
 
 # run a script within a specific working dir, return back 
