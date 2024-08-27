@@ -1,4 +1,5 @@
-**/ndnSIM
+**/ndnSIM*
+**/sim_bootsec*
 **/*.cert
 **/*.o
 **/*.dat
