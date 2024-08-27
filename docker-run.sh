@@ -24,4 +24,4 @@ fi
 echo "Type in terminal the command: "
 echo "# ./run.sh"
 $DOCKER_CMD run --name $DOCKER_IMAGE_NAME -it -v ./ndnSIM:/ndnSIM localhost/$DOCKER_IMAGE_NAME ||
-$DOCKER_CMD start -at $DOCKER_IMAGE_NAME
+$DOCKER_CMD start -ai $DOCKER_IMAGE_NAME
