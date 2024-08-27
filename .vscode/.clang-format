@@ -1,0 +1,15 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+IndentWidth: 2
+IndentCaseLabels: true
+IndentCaseBlocks: true
+NamespaceIndentation: All
+SpaceBeforeParens: Never
+ColumnLimit: 110
+# AlignConsecutiveMacros: Consecutive
+# AlignConsecutiveAssignments: Consecutive
+# AlignConsecutiveBitFields: Consecutive
+# AlignConsecutiveDeclarations: Consecutive
+# AlignAfterOpenBracket: BlockIndent
+# BreakBeforeBraces: Custom

@@ -6,7 +6,7 @@
 #include <limits>
 #include <string>
 
-#include "custom-utils-boot.hpp"
+#include "custom-utils.hpp"
 
 #include "ns3/attribute-helper.h"
 #include "ns3/attribute.h"
@@ -18,20 +18,21 @@
 #include "ns3/wifi-phy.h"
 
 namespace ns3 {
-    std::ostream &operator<<(std::ostream &os, const NodeContainer &nodeContainer);
+    std::ostream &
+    operator<<(std::ostream &os, const NodeContainer &nodeContainer);
     std::istream &operator>>(std::istream &is, NodeContainer &nodeContainer);
 
     ATTRIBUTE_HELPER_HEADER(NodeContainer);
-}  // namespace ns3
+} // namespace ns3
 
 namespace ns3 {
 
-    class CustomTracerBoot : public ns3::Object {
+    class CustomTracer : public ns3::Object {
       public:
         // register NS-3 type "CustomConsumer"
         static TypeId GetTypeId();
 
-        CustomTracerBoot();
+        CustomTracer();
 
         void doInstall();
         void collectData();
@@ -44,25 +45,35 @@ namespace ns3 {
         // utilitary functions
       private:
         std::string decodeCurrentWifiState(const WifiPhyState &state);
-        std::string decodeWifiRxFailureReason(const WifiPhyRxfailureReason &reason);
+        std::string
+        decodeWifiRxFailureReason(const WifiPhyRxfailureReason &reason);
 
         // traces
       private:
-        void PhyStateChg(std::string context, Time start, Time duration, WifiPhyState state);
+        void PhyStateChg(
+            std::string context, Time start, Time duration, WifiPhyState state
+        );
         void PhyRxError(std::string context, Ptr<const Packet> pkt, double snr);
         void PhyTxDrop(std::string context, Ptr<const Packet> pkt);
-        void PhyRxDrop(std::string context, Ptr<const Packet> pkt, WifiPhyRxfailureReason reason);
+        void PhyRxDrop(
+            std::string context, Ptr<const Packet> pkt,
+            WifiPhyRxfailureReason reason
+        );
 
-        void FirstInterestDataDelay(Ptr<ndn::App> app, uint32_t seqno, Time delay, uint32_t retx_count, int32_t hop_count);
-        void LastRetransmittedInterestDataDelay(Ptr<ndn::App> app, uint32_t seqno, Time delay, int32_t hopCount);
+        void FirstInterestDataDelay(
+            Ptr<ndn::App> app, uint32_t seqno, Time delay, uint32_t retx_count,
+            int32_t hop_count
+        );
+        void LastRetransmittedInterestDataDelay(
+            Ptr<ndn::App> app, uint32_t seqno, Time delay, int32_t hopCount
+        );
 
       private:
-        template <typename T>
-        class PktCounter {
+        template <typename T> class PktCounter {
           public:
             PktCounter() : last(0), current(0) {}
             void update() {
-                last    = current;
+                last = current;
                 current = 0;
             }
             T getDiff() { return current - last; }
@@ -84,9 +95,9 @@ namespace ns3 {
         PktCounter<uint64_t> droppedInt;
         uint64_t retxInt, uniqData;
         uint64_t phyRxDropped, phyTxDropped;
-        AvgStructBoot firstDelayStr, lastDelayStr, hopCountStr;
+        AvgStruct firstDelayStr, lastDelayStr, hopCountStr;
     };
 
-}  // namespace ns3
+} // namespace ns3
 
-#endif  // CUSTOM_TRACER_BOOT_H_
+#endif // CUSTOM_TRACER_BOOT_H_
