@@ -88,12 +88,12 @@ if [ -z "$LOGS" ]; then
     # CUSTOM_LOGS=${CUSTOM_LOGS}:CustomTracer
         
     LOG_NDN_SECURITY=ndn-cxx.ndn.security.pib.Pib
-    # LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateCache
+    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateCache
     LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateBundleFetcher
     LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateFetcher
     LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.CertificateFetcher.FromNetwork
-    # LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.KeyChain
-    # LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.TrustAnchorGroup
+    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.KeyChain
+    LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.TrustAnchorGroup
     LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.ValidationState
     LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.v2.Validator
     LOG_NDN_SECURITY=${LOG_NDN_SECURITY}:ndn-cxx.ndn.security.validator_config.Rule
@@ -105,8 +105,8 @@ if [ -z "$LOGS" ]; then
     LOGS=${LOGS}:ndn.Consumer
     LOGS=${LOGS}:ndn.Producer
     LOGS=${LOGS}:ndn-cxx.nfd.Forwarder
-    LOGS=${LOGS}:ndn-cxx.nfd.Strategy    
-    LOGS=${LOGS}:ndn.AppLinkService
+    # LOGS=${LOGS}:ndn-cxx.nfd.Strategy    
+    # LOGS=${LOGS}:ndn.AppLinkService
     
 elif [ "$LOGS" == ":" ]; then    
     # if user typed LOGS=: , logs will be disabled in NS3 simulation

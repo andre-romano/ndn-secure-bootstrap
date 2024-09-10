@@ -4,6 +4,8 @@
 #define CUSTOM_APP_H
 
 // NDN-CXX
+#include "ns3/ndnSIM/ndn-cxx/lp/fields.hpp"
+#include "ns3/ndnSIM/ndn-cxx/lp/tags.hpp"
 #include "ns3/ndnSIM/ndn-cxx/security/key-chain.hpp"
 #include "ns3/ndnSIM/ndn-cxx/security/signing-helpers.hpp"
 #include "ns3/ndnSIM/ndn-cxx/security/validator-config.hpp"
@@ -57,6 +59,19 @@ namespace ns3 {
     class CustomApp : public App {
 
     public:
+      struct InterestOptions {
+        // Member variables
+        bool canBePrefix;
+        bool mustBeFresh;
+
+        InterestOptions() : canBePrefix(false), mustBeFresh(false) {}
+      };
+
+      struct DataOptions {
+        DataOptions() {}
+      };
+
+    public:
       static bool isValidKeyName(const ::ndn::Name &keyName);
       static bool isValidCertificateName(const ::ndn::Name &certName);
 
@@ -86,6 +101,7 @@ namespace ns3 {
     protected:
       void setSignValidityPeriod(int daysValid);
       void setShouldValidateData(bool validate);
+      bool getShouldValidateData();
 
       void readValidationRules();
       void readValidationRules(std::shared_ptr<const ndn::Data> data);
@@ -98,23 +114,26 @@ namespace ns3 {
       void addValidationRule(std::string dataRegex, std::string keyLocatorRegex);
       void addTrustAnchor(std::string filename);
 
-      std::string getValidationRegex(::ndn::Name prefix);
-      std::string getKeySuffixRegex();
+      std::string getValidationRegex(const ::ndn::Name &prefix);
 
-      void sendInterest(::ndn::Name name, ns3::Time lifeTime, bool canBePrefix = false);
-      void sendInterest(std::string name, ns3::Time lifeTime, bool canBePrefix = false);
-      void sendInterest(std::shared_ptr<ndn::Interest> data);
+      void sendInterest(::ndn::Name name, ns3::Time lifeTime,
+                        const InterestOptions &opts = InterestOptions());
+      void sendInterest(std::string name, ns3::Time lifeTime,
+                        const InterestOptions &opts = InterestOptions());
+      void sendInterest(std::shared_ptr<ndn::Interest> interest);
 
       void sendData(std::shared_ptr<ndn::Data> data);
 
-      void sendCertificate(std::shared_ptr<const ndn::Interest> interest);
-      void sendCertificate(const ndn::Name &keyName);
+      void sendCertificate(std::shared_ptr<const ndn::Interest> interest,
+                           const DataOptions &opts = DataOptions());
+      void sendCertificate(const ndn::Name &keyName, const DataOptions &opts = DataOptions());
       void sendCertificate(std::shared_ptr<::ndn::security::v2::Certificate> cert);
 
       void addCertificate(::ndn::security::v2::Certificate &cert);
       const ::ndn::security::v2::Certificate &createCertificate(const ndn::Name &prefix);
 
       void printKeyChain();
+      void printValidationRules();
 
       bool isDataValid();
 
@@ -124,8 +143,6 @@ namespace ns3 {
 
       void scheduleSubscribeSchema();
       void sendSubscribeSchema();
-
-      void checkOnDataSchemaProtocol(std::shared_ptr<const ndn::Data> data);
 
     private:
       void reloadValidationRules();

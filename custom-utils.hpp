@@ -1,10 +1,12 @@
 #ifndef CUSTOM_UTILS_H
 #define CUSTOM_UTILS_H
 
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <random>
+#include <stdexcept> // for standard exception classes
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -22,6 +24,8 @@ namespace utils {
     double m_data;
     uint64_t m_count;
   };
+
+  bool fileExists(std::string filename);
 
   int generateRandomInteger(int min = std::numeric_limits<int>::min(),
                             int max = std::numeric_limits<int>::max());

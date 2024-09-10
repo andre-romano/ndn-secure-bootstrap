@@ -65,6 +65,12 @@ namespace ns3 {
       // Schedule send of first interest
       scheduleSubscribeSchema();
       scheduleInterestContent();
+
+      // request current trust schema
+      InterestOptions opts;
+      opts.canBePrefix = false;
+      opts.mustBeFresh = true;
+      sendInterest(m_schemaContentPrefix, m_schemaSubscribeLifetime, opts);
     }
 
     // Processing when application is stopped
@@ -77,7 +83,15 @@ namespace ns3 {
 
     void CustomConsumer::OnDataContent(std::shared_ptr<const ndn::Data> data) {
       NS_LOG_FUNCTION(data->getName());
-      checkOnDataSchemaProtocol(data);
+      if(m_schemaContentPrefix.isPrefixOf(data->getName())) {
+        readValidationRules(data);
+      } else if(m_schemaSubscribePrefix.isPrefixOf(data->getName())) {
+        NS_LOG_INFO("Sending SCHEMA content Interest for '" << m_schemaContentPrefix << "' ... ");
+        InterestOptions opts;
+        opts.canBePrefix = false;
+        opts.mustBeFresh = true;
+        sendInterest(m_schemaContentPrefix, m_schemaSubscribeLifetime, opts);
+      }
     }
 
     void CustomConsumer::SetRandomize(const std::string &value) {

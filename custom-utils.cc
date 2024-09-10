@@ -18,6 +18,11 @@ namespace utils {
 
   double AvgStruct::get() { return m_data; }
 
+  bool fileExists(std::string filename) {
+    std::ifstream is(filename);
+    return is.good();
+  }
+
   int generateRandomInteger(int min, int max) {
     // random seed generator
     std::random_device rd;

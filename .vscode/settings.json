@@ -87,7 +87,8 @@
         "locale": "cpp",
         "__bit_reference": "cpp",
         "__split_buffer": "cpp",
-        "ios": "cpp"
+        "ios": "cpp",
+        "span": "cpp"
     },
     "editor.formatOnSave": true,
     "C_Cpp.clang_format_style": "file:./.vscode/.clang-format",

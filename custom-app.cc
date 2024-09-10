@@ -27,7 +27,9 @@
 #include "ns3/ndnSIM/model/ndn-l3-protocol.hpp"
 
 // system libs
+#include <fstream>
 #include <limits>
+#include <stdexcept> // for standard exception classes
 #include <string>
 
 // namespace ns3 {
@@ -112,7 +114,7 @@ namespace ns3 {
     NS_OBJECT_ENSURE_REGISTERED(CustomApp);
 
     //////////////////////
-    //     PUBLIC
+    //     PUBLIC       //
     //////////////////////
 
     bool CustomApp::isValidKeyName(const ::ndn::Name &keyName) {
@@ -176,11 +178,11 @@ namespace ns3 {
       try {
         readValidationRules();
       } catch(const std::exception &e) {
-        NS_LOG_ERROR("Failed to load validation rules file='" + m_validatorConf + "' - Error=" + e.what());
-        clearValidationRules();
+        throw std::runtime_error("Failed to load validation rules file='" + m_validatorConf +
+                                 "' - Error=" + e.what());
       }
 
-      // define schema prefixes
+      // define schema prefixes /zoneA/SCHEMA/SUBSCRIBE
       m_schemaContentPrefix = m_schemaPrefix.deepCopy().append("CONTENT");
       m_schemaSubscribePrefix = m_schemaPrefix.deepCopy().append("SUBSCRIBE");
     }
@@ -236,6 +238,7 @@ namespace ns3 {
                                            const ::ndn::security::v2::ValidationError &error) {
       NS_LOG_FUNCTION(data.getName());
       m_dataIsValid = false;
+      printValidationRules();
     }
 
     //////////////////////
@@ -250,6 +253,7 @@ namespace ns3 {
     }
 
     void CustomApp::setShouldValidateData(bool validate) { m_shouldValidateData = validate; }
+    bool CustomApp::getShouldValidateData() { return m_shouldValidateData; }
 
     /// @brief must be run after ndn::App.StartApplication()
     void CustomApp::readValidationRules() {
@@ -268,12 +272,15 @@ namespace ns3 {
     void CustomApp::readValidationRules(std::shared_ptr<const ndn::Data> data) {
       try {
         NS_LOG_INFO("Reading trust schema from Data packet '" << data->getName() << "'... ");
-        auto buffer = data->getContent().getBuffer();
-        std::stringstream inputStream(std::string(buffer->begin(), buffer->end()));
+        auto &contentBlock = data->getContent();
+        std::string contentStr(contentBlock.value_begin(), contentBlock.value_end());
+        std::stringstream inputStream(contentStr);
+        NS_LOG_INFO("InputStream: \n" << inputStream.str());
         boost::property_tree::read_info(inputStream, *m_validatorRoot);
         reloadValidationRules();
       } catch(const std::exception &e) {
-        NS_LOG_ERROR("Failed load validation rules from '" << data->getName() << "' - Error=" << e.what());
+        throw std::runtime_error("Failed load validation rules from '" + data->getName().toUri() +
+                                 "' - Error=" + e.what());
       }
     }
 
@@ -315,30 +322,36 @@ namespace ns3 {
         rule.put("checker.key-locator.type", "name");
         rule.put("checker.key-locator.regex", keyLocatorRegex);
 
-        m_validatorRoot->add_child("rule", rule);
+        m_validatorRoot->push_front(std::make_pair("rule", rule));
         reloadValidationRules();
       } catch(const std::exception &e) {
-        NS_LOG_ERROR("Failed add validation rule for data=''" << dataRegex << "' , keyLocator='"
-                                                              << keyLocatorRegex << "' - Error=" << e.what());
+        throw std::runtime_error("Failed add validation rule for data=''" + dataRegex + "' , keyLocator='" +
+                                 keyLocatorRegex + "' - Error=" + e.what());
       }
     }
 
     void CustomApp::addTrustAnchor(std::string filename) {
       try {
         NS_LOG_FUNCTION(filename);
+
+        if(!::utils::fileExists(filename)) {
+          throw std::runtime_error("file '" + filename + "' does not exist");
+        }
+
         ::ndn::security::v2::validator_config::ConfigSection trustAnchor;
         trustAnchor.put("type", "file");
         trustAnchor.put("file-name", filename);
 
-        m_validatorRoot->add_child("trust-anchor", trustAnchor);
+        m_validatorRoot->push_front(std::make_pair("trust-anchor", trustAnchor));
+
         reloadValidationRules();
       } catch(const std::exception &e) {
-        NS_LOG_ERROR("Failed to add validation trust-anchor in filename ''" << filename
-                                                                            << "' - Error=" << e.what());
+        throw std::runtime_error("Failed to add validation trust-anchor in filename ''" + filename +
+                                 "' - Error=" + e.what());
       }
     }
 
-    std::string CustomApp::getValidationRegex(::ndn::Name prefix) {
+    std::string CustomApp::getValidationRegex(const ::ndn::Name &prefix) {
       std::stringstream res;
       for(auto &item : prefix) {
         res << "<" << item << ">";
@@ -346,20 +359,19 @@ namespace ns3 {
       return res.str();
     }
 
-    std::string CustomApp::getKeySuffixRegex() { return "<KEY><>{1,3}$"; }
-
-    void CustomApp::sendInterest(::ndn::Name name, ns3::Time lifeTime, bool canBePrefix) {
-      sendInterest(name.toUri(), lifeTime, canBePrefix);
+    void CustomApp::sendInterest(::ndn::Name name, ns3::Time lifeTime, const InterestOptions &opts) {
+      sendInterest(name.toUri(), lifeTime, opts);
     }
 
-    void CustomApp::sendInterest(std::string name, ns3::Time lifeTime, bool canBePrefix) {
+    void CustomApp::sendInterest(std::string name, ns3::Time lifeTime, const InterestOptions &opts) {
       NS_LOG_FUNCTION(name);
       // Create and configure ndn::Interest
       auto interest = std::make_shared<ndn::Interest>(name);
       ::ns3::Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
       interest->setNonce(rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
       interest->setInterestLifetime(ndn::time::milliseconds(lifeTime.GetMilliSeconds()));
-      interest->setCanBePrefix(canBePrefix);
+      interest->setCanBePrefix(opts.canBePrefix);
+      interest->setMustBeFresh(opts.mustBeFresh);
 
       // send packet
       sendInterest(interest);
@@ -386,11 +398,11 @@ namespace ns3 {
       m_appLink->onReceiveData(*data);
     }
 
-    void CustomApp::sendCertificate(std::shared_ptr<const ndn::Interest> interest) {
-      sendCertificate(interest->getName());
+    void CustomApp::sendCertificate(std::shared_ptr<const ndn::Interest> interest, const DataOptions &opts) {
+      sendCertificate(interest->getName(), opts);
     }
 
-    void CustomApp::sendCertificate(const ndn::Name &keyName) {
+    void CustomApp::sendCertificate(const ndn::Name &keyName, const DataOptions &opts) {
       NS_LOG_FUNCTION(keyName);
 
       try {
@@ -401,8 +413,8 @@ namespace ns3 {
 
         sendCertificate(cert);
       } catch(::ndn::security::pib::Pib::Error &e) {
-        NS_LOG_ERROR(
-            "Could not find certificate for: " << ::ndn::security::v2::extractIdentityFromKeyName(keyName));
+        throw std::runtime_error("Could not find certificate for: " +
+                                 ::ndn::security::v2::extractIdentityFromKeyName(keyName).toUri());
       }
     }
 
@@ -439,14 +451,15 @@ namespace ns3 {
       auto keyName = cert.getKeyName();
       try {
         auto identity =
-            m_keyChain.getPib().getIdentity(::ndn::security::v2::extractIdentityFromCertName(keyName));
+            m_keyChain.getPib().getIdentity(::ndn::security::v2::extractIdentityFromKeyName(keyName));
         auto key = identity.getKey(keyName);
         m_keyChain.deleteCertificate(key, cert.getName());
         m_keyChain.addCertificate(key, cert);
-        NS_LOG_INFO("Added certificate '" << keyName << "' to local keyChain");
+        m_keyChain.setDefaultCertificate(key, cert);
+        NS_LOG_INFO("Added certificate '" << cert.getName() << "' in local keyChain");
       } catch(::ndn::security::pib::Pib::Error &e) {
-        NS_LOG_ERROR(
-            "Could not find Identity for: " << ::ndn::security::v2::extractIdentityFromKeyName(keyName));
+        throw std::runtime_error("Could not find Identity for: " +
+                                 ::ndn::security::v2::extractIdentityFromKeyName(keyName).toUri());
       }
     }
 
@@ -460,6 +473,13 @@ namespace ns3 {
           }
         }
       }
+    }
+
+    void CustomApp::printValidationRules() {
+      // print validatorConf INFO output
+      std::stringstream output_ss;
+      boost::property_tree::write_info(output_ss, *m_validatorRoot);
+      NS_LOG_INFO("\n" << output_ss.str());
     }
 
     bool CustomApp::isDataValid() { return m_dataIsValid; }
@@ -482,17 +502,11 @@ namespace ns3 {
     }
 
     void CustomApp::sendSubscribeSchema() {
-      sendInterest(m_schemaSubscribePrefix, m_schemaSubscribeLifetime);
+      InterestOptions opts;
+      opts.canBePrefix = false;
+      opts.mustBeFresh = true;
+      sendInterest(m_schemaSubscribePrefix, m_schemaSubscribeLifetime, opts);
       scheduleSubscribeSchema();
-    }
-
-    void CustomApp::checkOnDataSchemaProtocol(std::shared_ptr<const ndn::Data> data) {
-      if(m_schemaContentPrefix.isPrefixOf(data->getName())) {
-        readValidationRules(data);
-      } else if(m_schemaSubscribePrefix.isPrefixOf(data->getName())) {
-        NS_LOG_INFO("Sending SCHEMA content Interest for '" << m_schemaContentPrefix << "' ... ");
-        sendInterest(m_schemaContentPrefix, m_schemaSubscribeLifetime);
-      }
     }
 
     //////////////////////
@@ -501,6 +515,11 @@ namespace ns3 {
 
     /// @brief reload validation rules stored in memory
     void CustomApp::reloadValidationRules() {
+      // print Validation Rules
+      printValidationRules();
+      // load validatorRoot into validatorConf
+      m_validator->resetAnchors();
+      m_validator->resetVerifiedCertificates();
       m_validator->load(*m_validatorRoot, m_validatorConf);
       NS_LOG_INFO("Trust schema RELOADED");
     }

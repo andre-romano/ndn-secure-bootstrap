@@ -54,12 +54,15 @@ namespace ns3 {
       void createTrustAnchor();
       void readValidationRules();
 
-      void addProducerSchema(::ndn::Name identityName);
+      void addProducerSchema(const ::ndn::Name &identityName);
+
       void sendDataSubscribe();
 
     private:
       ::ndn::Name m_zonePrefix;
-      ns3::Time m_schemaFreshness;
+      ::ndn::Name m_zoneKeyPrefix;
+
+      // ns3::Time m_schemaFreshness;
 
       std::string m_trustAnchorCert;
     };
