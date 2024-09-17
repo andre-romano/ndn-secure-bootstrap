@@ -477,9 +477,7 @@ namespace ns3 {
 
     void CustomApp::printValidationRules() {
       // print validatorConf INFO output
-      std::stringstream output_ss;
-      boost::property_tree::write_info(output_ss, *m_validatorRoot);
-      NS_LOG_INFO("\n" << output_ss.str());
+      NS_LOG_INFO("\n" << getValidationRules());
     }
 
     bool CustomApp::isDataValid() { return m_dataIsValid; }

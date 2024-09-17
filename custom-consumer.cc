@@ -66,7 +66,7 @@ namespace ns3 {
       scheduleSubscribeSchema();
       scheduleInterestContent();
 
-      // request current trust schema
+      // request current trust schema (SCHEMA/CONTENT)
       InterestOptions opts;
       opts.canBePrefix = false;
       opts.mustBeFresh = true;

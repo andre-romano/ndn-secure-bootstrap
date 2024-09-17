@@ -210,7 +210,7 @@ namespace ns3 {
       addValidationRule(dataRegex, keyLocatorRegex);
 
       // add Producer APP signing verification
-      dataRegex = "^" + getValidationRegex(identityName) + "[^<KEY>]*";
+      dataRegex = "^" + getValidationRegex(identityName) + "[^<KEY>]*$";
       keyLocatorRegex = "^" + getValidationRegex(identityName) + "<KEY><>{1,3}$";
       addValidationRule(dataRegex, keyLocatorRegex);
 
