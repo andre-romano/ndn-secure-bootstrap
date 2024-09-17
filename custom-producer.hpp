@@ -35,17 +35,17 @@ namespace ns3 {
       void OnInterestKey(std::shared_ptr<const ndn::Interest> interest) override;
       void OnInterestContent(std::shared_ptr<const ndn::Interest> interest) override;
 
-      void OnDataKey(std::shared_ptr<const ndn::Data> data) override;
+      void OnDataCertificate(std::shared_ptr<const ndn::Data> data) override;
       void OnDataContent(std::shared_ptr<const ndn::Data> data) override;
 
-      void OnDataValidationFailed(const ndn::Data &data,
-                                  const ::ndn::security::v2::ValidationError &error) override;
+      // void OnDataValidationFailed(const ndn::Data &data,
+      //                             const ::ndn::security::v2::ValidationError &error) override;
 
     protected:
-      std::string m_prefix;
+      ::ndn::Name m_prefix;
       uint32_t m_virtualPayloadSize;
       Time m_freshness;
-      std::string m_identityPrefix;
+      ::ndn::Name m_identityPrefix;
 
     private:
       void scheduleSignInterest();

@@ -6,6 +6,7 @@
 // system libs
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -46,23 +47,24 @@ namespace ns3 {
       void OnInterestKey(std::shared_ptr<const ndn::Interest> interest) override;
       void OnInterestContent(std::shared_ptr<const ndn::Interest> interest) override;
 
-      void OnDataKey(std::shared_ptr<const ndn::Data> data) override;
+      void OnDataCertificate(std::shared_ptr<const ndn::Data> data) override;
       void OnDataContent(std::shared_ptr<const ndn::Data> data) override;
 
     private:
       void createTrustAnchor();
       void readValidationRules();
 
-      void addProducerSchema(std::string identityName);
+      void addProducerSchema(const ::ndn::Name &identityName);
+
       void sendDataSubscribe();
 
     private:
-      std::string m_zonePrefix;
-      ns3::Time m_schemaFreshness;
+      ::ndn::Name m_zonePrefix;
+      ::ndn::Name m_zoneKeyPrefix;
+
+      // ns3::Time m_schemaFreshness;
 
       std::string m_trustAnchorCert;
-
-      std::string m_schemaRules;
     };
 
   } // namespace ndn

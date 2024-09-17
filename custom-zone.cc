@@ -10,8 +10,8 @@ namespace ns3 {
 
     CustomZone::CustomZone(string zoneName)
         : m_zoneName(zoneName), m_schemaPrefix(m_zoneName + "/SCHEMA"), m_signPrefix(m_zoneName + "/SIGN"),
-          m_trustAnchorCert("scratch/sim_bootsec/config" + m_zoneName + "_trustanchor.cert"),
-          m_validatorConf("scratch/sim_bootsec/config" + m_zoneName + "_validator.conf"),
+          m_trustAnchorCert("/ndnSIM/ns-3/scratch/sim_bootsec/config" + m_zoneName + "_trustanchor.cert"),
+          m_validatorConf("/ndnSIM/ns-3/scratch/sim_bootsec/config" + m_zoneName + "_validator.conf"),
           m_consumers(make_shared<NodeContainer>()), m_producers(make_shared<NodeContainer>()),
           m_trust_anchors(make_shared<NodeContainer>()) {
       addTrustAnchor();
@@ -93,11 +93,11 @@ namespace ns3 {
       NS_LOG_INFO("Installing Trust Anchor App for zone '" << m_zoneName << "' ...");
       ndn::AppHelper trustAnchorHelper("CustomTrustAnchor");
       trustAnchorHelper.SetAttribute("ZonePrefix", StringValue(m_zoneName));
-      trustAnchorHelper.SetAttribute("SchemaFreshness",
-                                     TimeValue(Seconds(freshness))); // freshness for trust schema file
       trustAnchorHelper.SetAttribute("TrustAnchorCert",
                                      StringValue(m_trustAnchorCert)); // trust anchor .cert FILE
-      // (inherited - CustomApp)
+      // trustAnchorHelper.SetAttribute("SchemaFreshness",
+      //                                TimeValue(Seconds(freshness))); // freshness for trust schema file
+      // // (inherited - CustomApp)
       trustAnchorHelper.SetAttribute("SignPrefix", StringValue(m_signPrefix));
       trustAnchorHelper.SetAttribute("SchemaPrefix", StringValue(m_schemaPrefix));
       trustAnchorHelper.SetAttribute("ValidatorConf", StringValue(m_validatorConf));

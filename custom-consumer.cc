@@ -40,7 +40,7 @@ namespace ns3 {
               .SetParent<CustomApp>()
               .AddConstructor<CustomConsumer>()
               .AddAttribute("Prefix", "Name of the Interest", StringValue("/"),
-                            MakeStringAccessor(&CustomConsumer::m_prefix), MakeStringChecker())
+                            MakeNameAccessor(&CustomConsumer::m_prefix), MakeNameChecker())
               .AddAttribute("Frequency", "Frequency of interest packets", StringValue("1.0"),
                             MakeDoubleAccessor(&CustomConsumer::m_frequency), MakeDoubleChecker<double>())
               .AddAttribute("LifeTime", "Lifetime of interest packets (in seconds)", StringValue("2s"),
@@ -65,6 +65,12 @@ namespace ns3 {
       // Schedule send of first interest
       scheduleSubscribeSchema();
       scheduleInterestContent();
+
+      // request current trust schema (SCHEMA/CONTENT)
+      InterestOptions opts;
+      opts.canBePrefix = false;
+      opts.mustBeFresh = true;
+      sendInterest(m_schemaContentPrefix, m_schemaSubscribeLifetime, opts);
     }
 
     // Processing when application is stopped
@@ -77,7 +83,15 @@ namespace ns3 {
 
     void CustomConsumer::OnDataContent(std::shared_ptr<const ndn::Data> data) {
       NS_LOG_FUNCTION(data->getName());
-      checkOnDataSchemaProtocol(data);
+      if(m_schemaContentPrefix.isPrefixOf(data->getName())) {
+        readValidationRules(data);
+      } else if(m_schemaSubscribePrefix.isPrefixOf(data->getName())) {
+        NS_LOG_INFO("Sending SCHEMA content Interest for '" << m_schemaContentPrefix << "' ... ");
+        InterestOptions opts;
+        opts.canBePrefix = false;
+        opts.mustBeFresh = true;
+        sendInterest(m_schemaContentPrefix, m_schemaSubscribeLifetime, opts);
+      }
     }
 
     void CustomConsumer::SetRandomize(const std::string &value) {
@@ -102,11 +116,12 @@ namespace ns3 {
     //////////////////////
 
     void CustomConsumer::scheduleInterestContent() {
-      if(!hasEvent(m_prefix)) {
-        m_sendEvents[m_prefix] =
+      auto consumerPrefixStr = m_prefix.toUri();
+      if(!hasEvent(consumerPrefixStr)) {
+        m_sendEvents[consumerPrefixStr] =
             Simulator::Schedule(Seconds(0.0), &CustomConsumer::sendInterestContent, this);
-      } else if(!isEventRunning(m_prefix)) {
-        m_sendEvents[m_prefix] =
+      } else if(!isEventRunning(consumerPrefixStr)) {
+        m_sendEvents[consumerPrefixStr] =
             Simulator::Schedule((m_random == 0) ? Seconds(1.0 / m_frequency) : Seconds(m_random->GetValue()),
                                 &CustomConsumer::sendInterestContent, this);
       }

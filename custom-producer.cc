@@ -38,7 +38,7 @@ namespace ns3 {
               .SetParent<CustomApp>()
               .AddConstructor<CustomProducer>()
               .AddAttribute("Prefix", "Name of the Interest", StringValue("/"),
-                            MakeStringAccessor(&CustomProducer::m_prefix), MakeStringChecker())
+                            MakeNameAccessor(&CustomProducer::m_prefix), MakeNameChecker())
               .AddAttribute("PayloadSize", "Virtual payload size for Content packets", UintegerValue(1024),
                             MakeUintegerAccessor(&CustomProducer::m_virtualPayloadSize),
                             MakeUintegerChecker<uint32_t>())
@@ -46,7 +46,7 @@ namespace ns3 {
                             TimeValue(Seconds(0)), MakeTimeAccessor(&CustomProducer::m_freshness),
                             MakeTimeChecker())
               .AddAttribute("IdentityPrefix", "Name of the Identity of the App", StringValue(""),
-                            MakeStringAccessor(&CustomProducer::m_identityPrefix), MakeStringChecker());
+                            MakeNameAccessor(&CustomProducer::m_identityPrefix), MakeNameChecker());
       return tid;
     }
 
@@ -61,17 +61,24 @@ namespace ns3 {
       ndn::FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
 
       // create self-signed certificate/identity and serve it
-      m_identityPrefix = (m_identityPrefix == "" ? m_prefix : m_identityPrefix);
+      m_identityPrefix = (m_identityPrefix == "" ? m_prefix.deepCopy() : m_identityPrefix);
       auto &cert = createCertificate(m_identityPrefix);
       ndn::FibHelper::AddRoute(GetNode(), ::ndn::security::v2::extractKeyNameFromCertName(cert.getName()),
                                m_face, 0);
       NS_LOG_DEBUG("Serving Data prefix: " << m_prefix << " - Certificate: " << cert.getName());
 
-      // disable validation until producer cert is OK
-      setShouldValidateData(false);
+      // enable packet validation
+      // --> ASSUMPTION 01: trust anchor .CERT out-of-band distribution
+      setShouldValidateData(true);
 
       scheduleSignInterest();    ///< @brief request for certificate signing
       scheduleSubscribeSchema(); ///< @brief subcribe for SCHEMA updates
+
+      // request current trust schema
+      InterestOptions opts;
+      opts.canBePrefix = false;
+      opts.mustBeFresh = true;
+      sendInterest(m_schemaContentPrefix, m_schemaSubscribeLifetime, opts);
 
       printKeyChain();
     }
@@ -83,9 +90,11 @@ namespace ns3 {
 
     void CustomProducer::OnInterestKey(std::shared_ptr<const ndn::Interest> interest) {
       CustomApp::OnInterestKey(interest);
-
       NS_LOG_FUNCTION(interest->getName());
-      sendCertificate(interest);
+
+      // disable caching for certificates
+      DataOptions opts;
+      sendCertificate(interest, opts);
     }
 
     void CustomProducer::OnInterestContent(std::shared_ptr<const ndn::Interest> interest) {
@@ -94,8 +103,9 @@ namespace ns3 {
       auto dataName = interest->getName();
       NS_LOG_FUNCTION(dataName);
 
-      if(dataName.isPrefixOf(m_schemaPrefix) || dataName.isPrefixOf(m_signPrefix)) {
-        NS_LOG_INFO("Dropping interest '" << dataName << "', as producer does not reply for SCHEMA prefixes");
+      if(!m_prefix.isPrefixOf(dataName)) {
+        NS_LOG_INFO("Dropping interest '" << dataName << "', - Producer only replies to content '" << m_prefix
+                                          << "'");
         return;
       }
 
@@ -111,55 +121,81 @@ namespace ns3 {
       sendData(data);
     }
 
-    void CustomProducer::OnDataKey(std::shared_ptr<const ndn::Data> data) {
-      CustomApp::OnDataKey(data);
+    void CustomProducer::OnDataCertificate(std::shared_ptr<const ndn::Data> data) {
+      NS_LOG_FUNCTION(data->getName());
+      CustomApp::OnDataCertificate(data);
 
-      NS_LOG_INFO("Received KEY for '" << data->getName() << "'");
-      if(data->getName().isPrefixOf(m_prefix + "/KEY") && isDataValid()) {
+      NS_LOG_INFO("Received CERTIFICATE for '" << data->getName() << "'");
+      if(m_signPrefix.isPrefixOf(data->getName())) {
+        if(!isDataValid()) {
+          // received the signed certificate from trust anchor, but we need
+          // to validate it
+          NS_LOG_INFO("Validating SIGN packet ...");
+          setShouldValidateData(true);
+          CustomApp::OnData(data);
+        } else {
+          NS_LOG_INFO("Opening CERTIFICATE payload of  '" << data->getName() << "' ...");
+          auto certPtr =
+              std::make_shared<::ndn::security::v2::Certificate>(data->getContent().blockFromValue());
+          CustomProducer::OnDataCertificate(certPtr);
+        }
+      } else if(m_identityPrefix.isPrefixOf(data->getName()) && isDataValid()) {
+        NS_LOG_INFO("Parsing CERTIFICATE '" << data->getName() << "' ...");
         ::ndn::security::v2::Certificate cert(*data);
         addCertificate(cert);
       }
     }
 
     void CustomProducer::OnDataContent(std::shared_ptr<const ndn::Data> data) {
+      NS_LOG_FUNCTION(data->getName());
       CustomApp::OnDataContent(data);
 
-      if(data->getName().isPrefixOf(m_signPrefix)) {
-        // we have received the signed certificate from trust anchor
-        ::ndn::Data newData = *data;
-        newData.setName(data->getName().getSubName(m_signPrefix.size()));
-        auto newDataPtr = std::make_shared<::ndn::Data>(newData);
-        // validate certificate
-        setShouldValidateData(true);
-        CustomApp::OnData(newDataPtr);
-      }
-      checkOnDataSchemaProtocol(data);
-    }
-
-    void CustomProducer::OnDataValidationFailed(const ndn::Data &data,
-                                                const ::ndn::security::v2::ValidationError &error) {
-      CustomApp::OnDataValidationFailed(data, error);
-
-      if(data.getName().isPrefixOf(m_prefix + "/KEY")) {
-        setShouldValidateData(false);
+      // onData(SCHEMA/CONTENT)
+      if(m_schemaContentPrefix.isPrefixOf(data->getName())) {
+        readValidationRules(data);
+        // onData(SCHEMA/SUBSCRIBE)
+      } else if(m_schemaSubscribePrefix.isPrefixOf(data->getName())) {
+        NS_LOG_INFO("Sending SCHEMA content Interest for '" << m_schemaContentPrefix << "' ... ");
+        InterestOptions opts;
+        opts.canBePrefix = false;
+        opts.mustBeFresh = true;
+        sendInterest(m_schemaContentPrefix, m_schemaSubscribeLifetime, opts);
       }
     }
+
+    // void CustomProducer::OnDataValidationFailed(const ndn::Data &data,
+    //                                             const ::ndn::security::v2::ValidationError &error) {
+    //   CustomApp::OnDataValidationFailed(data, error);
+    //   ::ndn::Name keyPrefix = m_prefix;
+    //   keyPrefix.append("KEY");
+    //   if(keyPrefix.isPrefixOf(data.getName())) {
+    //     setShouldValidateData(false);
+    //   }
+    // }
 
     //////////////////////
     //     PRIVATE
     //////////////////////
 
     void CustomProducer::scheduleSignInterest() {
-      if(!hasEvent(m_signPrefix)) {
-        m_sendEvents[m_signPrefix] =
+      auto signPrefixStr = m_signPrefix.toUri();
+      if(!hasEvent(signPrefixStr)) {
+        m_sendEvents[signPrefixStr] =
             Simulator::Schedule(Seconds(0.0), &CustomProducer::sendSignInterest, this);
-      } else if(!isEventRunning(m_signPrefix)) {
-        m_sendEvents[m_signPrefix] =
+      } else if(!isEventRunning(signPrefixStr)) {
+        m_sendEvents[signPrefixStr] =
             Simulator::Schedule(m_signLifetime, &CustomProducer::sendSignInterest, this);
       }
     }
 
-    void CustomProducer::sendSignInterest() { sendInterest(m_signPrefix, m_signLifetime); }
+    void CustomProducer::sendSignInterest() {
+      auto keyName = m_keyChain.getPib().getDefaultIdentity().getDefaultKey().getName();
+      ::ndn::Name producerKeySignPrefix = m_signPrefix.deepCopy().append(keyName);
+      InterestOptions opts;
+      opts.canBePrefix = true;
+      opts.mustBeFresh = true;
+      sendInterest(producerKeySignPrefix, m_signLifetime, opts);
+    }
 
   } // namespace ndn
 } // namespace ns3

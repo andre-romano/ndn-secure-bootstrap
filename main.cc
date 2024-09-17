@@ -1,6 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include "ns3/mobility-module.h"
 #include "ns3/network-module.h"
 #include "ns3/ns2-mobility-helper.h"
+#include "ns3/point-to-point-module.h"
 #include "ns3/random-variable-stream.h"
 #include "ns3/wifi-module.h"
 #include "ns3/wifi-net-device.h"
@@ -77,58 +79,18 @@ namespace ns3 {
     return uri;
   }
 
-  shared_ptr<nfd::face::Face> addFaceWifiNetDeviceCallback(Ptr<Node> node, Ptr<ndn::L3Protocol> ndn,
-                                                           Ptr<NetDevice> netDevice) {
-    // Create an ndnSIM-specific transport instance
-    ::nfd::face::GenericLinkService::Options opts;
-    opts.allowFragmentation = true;
-    opts.allowReassembly = true;
-    opts.allowCongestionMarking = true;
-    // NS_LOG_DEBUG("CREATING WIFI NETDEV FACE");
-
-    auto linkService = make_unique<::nfd::face::GenericLinkService>(opts);
-    // auto linkService = make_unique<::nfd::face::LinkService>(opts);
-
-    auto linkType = ::ndn::nfd::LINK_TYPE_POINT_TO_POINT;
-    if(netDevice->IsPointToPoint() == 0)
-      linkType = ::ndn::nfd::LINK_TYPE_MULTI_ACCESS;
-    // check for Adhoc communication
-    auto wifiNetDev = dynamic_cast<ns3::WifiNetDevice *>(&(*netDevice));
-    if(wifiNetDev != NULL) {
-      auto wifiMac = wifiNetDev->GetMac();
-      if(dynamic_cast<ns3::AdhocWifiMac *>(&(*wifiMac)) != NULL)
-        linkType = ::ndn::nfd::LINK_TYPE_AD_HOC;
-    }
-
-    auto transport = make_unique<ndn::NetDeviceTransport>(
-        node, netDevice, constructFaceUri(netDevice), "netdev://[ff:ff:ff:ff:ff:ff]",
-        ::ndn::nfd::FACE_SCOPE_NON_LOCAL, ::ndn::nfd::FACE_PERSISTENCY_PERSISTENT, linkType);
-
-    auto face = std::make_shared<nfd::face::Face>(std::move(linkService), std::move(transport));
-    face->setMetric(1);
-
-    ndn->addFace(face);
-    // NS_LOG_LOGIC("Node " << node->GetId() << ": added Face as face #" <<
-    // face->getLocalUri()
-    //                      << " - remoteURI = " << face->getRemoteUri() <<
-    //                      " - linkType " << linkType);
-
-    return face;
-  }
-
   int main(int argc, char *argv[]) {
-    // disable fragmentation
-    StringValue wifiRate("OfdmRate24Mbps");
-    Config::SetDefault("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue("2200"));
-    Config::SetDefault("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue("2200"));
-    Config::SetDefault("ns3::WifiRemoteStationManager::NonUnicastMode", wifiRate);
+
+    // setting default parameters for PointToPoint links and channels
+    Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("100Mbps"));
+    Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("5ms"));
 
     // get commands from user
     CommandLine cmd;
     uint32_t nSimDuration = 11;
     std::string nTraceFile = "results/mobility-trace.ns_movements";
     double nInitialEnergy = 20.0;
-    size_t nCsSize = 1000;
+    size_t nCsSize = 1;
     size_t n_Forwarders = 1;
     cmd.AddValue("nSimDuration", "Simulation duration ", nSimDuration);
     cmd.AddValue("nTraceFile", "Ns2 movement trace file", nTraceFile);
@@ -141,66 +103,6 @@ namespace ns3 {
     NS_LOG_UNCOND("TraceFile = " << nTraceFile);
 
     //////////////////////
-    //     WIRELESS
-    //////////////////////
-    NS_LOG_INFO("Setup Wi-Fi Stack ...");
-    WifiHelper wifi;
-    wifi.SetStandard(WIFI_PHY_STANDARD_80211a);
-    wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager", "DataMode", wifiRate);
-    // wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
-
-    YansWifiChannelHelper wifiChannel;
-    wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-    wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel");
-    wifiChannel.AddPropagationLoss("ns3::NakagamiPropagationLossModel");
-    // wifiChannel.AddPropagationLoss("ns3::ThreeLogDistancePropagationLossModel");
-
-    YansWifiPhyHelper wifiPhyHelper = YansWifiPhyHelper::Default();
-    wifiPhyHelper.SetChannel(wifiChannel.Create());
-    // wifiPhyHelper.SetErrorRateModel("ns3::YansErrorRateModel");
-    // wifiPhyHelper.SetErrorRateModel("ns3::RateErrorModel",
-    //                                 "ErrorRate", DoubleValue(nErrorRate),
-    //                                 "ErrorUnit",
-    //                                 EnumValue(RateErrorModel::ERROR_UNIT_PACKET));
-    // wifiPhyHelper.Set("TxPowerStart", DoubleValue(5));
-    // wifiPhyHelper.Set("TxPowerEnd", DoubleValue(5));
-
-    WifiMacHelper wifiMacHelper;
-    wifiMacHelper.SetType("ns3::AdhocWifiMac");
-
-    //////////////////////
-    //     MOBILITY
-    //////////////////////
-    NS_LOG_INFO("Setup Mobility Model ...");
-    const int MAP_SIZE = 200; // map size (in meters)
-    MobilityHelper mobility;
-    mobility.SetPositionAllocator(
-        "ns3::RandomDiscPositionAllocator",        // random position based on
-                                                   // polar radius
-        "X", StringValue(to_string(MAP_SIZE / 2)), // center in x axis of the map
-        "Y", StringValue(to_string(MAP_SIZE / 2)), // center in y axis of the map
-        // delta change of the map
-        "Rho", StringValue("ns3::UniformRandomVariable[Min=0|Max=" + to_string(MAP_SIZE / 2) + "]"));
-    mobility.SetMobilityModel("ns3::RandomWalk2dMobilityModel", "Mode",
-                              StringValue("Time"),       // change speed based on time
-                              "Time", StringValue("2s"), // change every X seconds
-                              // speed vary between min & max
-                              "Speed", StringValue("ns3::UniformRandomVariable[Min=1.0|Max=2.0]"), "Bounds",
-                              StringValue("0|" + to_string(MAP_SIZE) + "|0|" + to_string(MAP_SIZE)));
-
-    //////////////////////
-    //     ENERGY MODEL
-    //////////////////////
-    NS_LOG_INFO("Setup Energy Model ...");
-    // configure energy source - DEAULT IS 10.0
-    BasicEnergySourceHelper basicSourceHelper;
-    basicSourceHelper.Set("BasicEnergySourceInitialEnergyJ", DoubleValue(nInitialEnergy));
-    /* device energy model */
-    WifiRadioEnergyModelHelper radioEnergyHelper;
-    // configure radio energy model
-    // radioEnergyHelper.Set ("TxCurrentA", DoubleValue (0.0174));
-
-    //////////////////////
     //     NDN STACK
     //////////////////////
     NS_LOG_INFO("Setup NDN Stack ...");
@@ -210,7 +112,6 @@ namespace ns3 {
     ndnHelper.setPolicy("nfd::cs::lru");
     ndnHelper.setCsSize(nCsSize); // forwarder->getCs().setLimit(nCsSize);
     ndnHelper.SetDefaultRoutes(true);
-    ndnHelper.AddFaceCreateCallback(WifiNetDevice::GetTypeId(), MakeCallback(&addFaceWifiNetDeviceCallback));
 
     //////////////////////
     //     NDN ZONES
@@ -248,50 +149,31 @@ namespace ns3 {
     //     INSTALL
     //////////////////////
 
-    // 1. Install Wifi
-    NS_LOG_INFO("Installing Wi-Fi Stack ...");
-    NetDeviceContainer wifiNetDevices = wifi.Install(wifiPhyHelper, wifiMacHelper, nodes);
-    NetDeviceContainer fwdNetDevices;
-    for(auto fwdNode : forwarders) {
-      fwdNetDevices.Add(fwdNode->GetDevice(0));
+    // 1. Install Links
+    NS_LOG_INFO("Installing P2P links ...");
+    ::ns3::PointToPointHelper p2p;
+    for(auto consumer : consumers) {
+      for(auto producer : producers) {
+        p2p.Install(consumer, producer);
+      }
     }
-
-    // 2. Install Mobility model
-    NS_LOG_INFO("Installing Mobility Model ...");
-    if(nTraceFile.empty()) {
-      mobility.Install(nodes);
-    } else {
-      Ns2MobilityHelper mobilityTrace(nTraceFile);
-      mobilityTrace.Install();
+    for(auto trust_anchor : trust_anchors) {
+      for(auto producer : producers) {
+        p2p.Install(trust_anchor, producer);
+      }
     }
-
-    // Config::Connect("/NodeList/*/$ns3::MobilityModel/CourseChange",
-    // MakeCallback(&CourseChange));  // monitor for chg in pos
-
-    // 3. Install Energy model
-    NS_LOG_INFO("Installing Energy Model ...");
-    EnergySourceContainer sources = basicSourceHelper.Install(forwarders);
-    DeviceEnergyModelContainer deviceModels = radioEnergyHelper.Install(fwdNetDevices, sources);
-    // // TODO TEST CODE BELOW TO FORCE SPECIFIC NODES' SELECTION
-    // NetDeviceContainer tempNetDevices;
-    // NodeContainer tempContainer;
-    // for (auto fwdNode : forwarders) {
-    //     if (fwdNode->GetId() != 8 && fwdNode->GetId() != 5) {  //&&
-    //     fwdNode->GetId() != 9) {
-    //         tempContainer.Add(fwdNode);
-    //         tempNetDevices.Add(fwdNode->GetDevice(0));
-    //     }
-    // }
-    // EnergySourceContainer sources           =
-    // basicSourceHelper.Install(tempContainer); DeviceEnergyModelContainer
-    // deviceModels = radioEnergyHelper.Install(tempNetDevices, sources);
+    for(auto trust_anchor : trust_anchors) {
+      for(auto forwarder : forwarders) {
+        p2p.Install(trust_anchor, forwarder);
+      }
+    }
 
     // 4. Install NDN stack
     NS_LOG_INFO("Installing NDN stack ...");
     ndnHelper.Install(nodes);
 
     // 5. Set fw strategy
-    NS_LOG_INFO("Installing NDN (default) Forwarding Strategies ...");
+    NS_LOG_INFO("Installing NDN Forwarding Strategies ...");
     ndn::StrategyChoiceHelper::Install(consumers, "/", "/localhost/nfd/strategy/multicast");
     ndn::StrategyChoiceHelper::Install(forwarders, "/", "/localhost/nfd/strategy/multicast");
     ndn::StrategyChoiceHelper::Install(producers, "/", "/localhost/nfd/strategy/multicast");

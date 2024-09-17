@@ -6,6 +6,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <memory>
 
 // ns3 modules
 #include "ns3/adhoc-wifi-mac.h"
@@ -72,12 +73,7 @@ namespace ns3 {
       std::shared_ptr<NodeContainer> m_producers;
       std::shared_ptr<NodeContainer> m_trust_anchors;
 
-      // Name m_identityPrefix;
-      // Name m_trustAnchorIdentityPrefix;
-      // std::string m_trustAnchorCertFilename;
-
       std::shared_ptr<::ndn::security::v2::KeyChain> m_keyChain;
-      // ::ndn::security::SigningInfo m_signingInfo;
     };
   } // namespace ndn
 } // namespace ns3
