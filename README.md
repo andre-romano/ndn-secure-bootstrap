@@ -20,6 +20,8 @@
       - [2.3. Producer Certificate Signing](#23-producer-certificate-signing)
       - [2.4. Update Trust Schema](#24-update-trust-schema)
     - [3. Bootstrapping Overview](#3-bootstrapping-overview)
+  - [Interzone communication](#interzone-communication)
+    - [1. Interzone Bootstrapping Overview](#1-interzone-bootstrapping-overview)
 
 
 This project can be run in either one of the following methods:
@@ -202,4 +204,40 @@ sequenceDiagram
     Zone Controller->>Producer: D1: /<zone>/SCHEMA/SUBSCRIBE    
     Producer->>Zone Controller: I6: /<zone>/SCHEMA/CONTENT
     Zone Controller->>Producer: D6: /<zone>/SCHEMA/CONTENT    
+```
+
+## Interzone communication
+
+Similarly to Intrazone communication, we will need to follow steps [2.3. (Producer certificate signing)](#23-producer-certificate-signing) and [2.4 (trust schema update)](#24-update-trust-schema) to allow Interzone applications to communicate with each other. 
+
+### 1. Interzone Bootstrapping Overview
+Consider a scenario with two NDN zones (e.g., A and B), each with their own consumers (Cons), producers (Prod), and zone controllers (Zone). Suppose we have a Consumer from Zone A (Cons_A) issuing Interests for a Zone B Producer (Prod_B). In that scenario, the following sequence diagram summarizes the Interzone bootstrapping process:
+
+```mermaid
+sequenceDiagram
+    participant Cons_A
+    participant Zone_A    
+    participant Zone_B
+    participant Prod_B
+
+    Cons_A->>Zone_A: I1: /<zoneA>/ZONE/<zoneB>
+    Zone_A->>Zone_A: checkInterzoneSchema()
+    Zone_A->>Zone_B: I2: /<zoneB>/SIGN_REQ/<zoneA>
+    Zone_B->>Zone_A: I3: /<zoneA>/SIGN/<zoneB>/KEY/<>?canBePrefix
+    Zone_A->>Zone_B: I4: /<zoneB>/KEY/<>?canBePrefix
+    Zone_B->>Zone_A: D1: /<zoneB>/KEY/<>/self/<>
+    Zone_A->>Zone_A: signCertWithTrustAnchor()
+    Zone_A->>Zone_A: addSignedCertTrustSchema()
+    Zone_A->>Zone_B: D2: /<zoneA>/SIGN/<zoneB>/KEY/<>{3,3}  
+    Zone_A->>Zone_B: I5: /<zoneB>/SCHEMA/SUBSCRIBE
+    Zone_A->>Zone_B: I6: /<zoneB>/SCHEMA/CONTENT
+    Zone_B->>Zone_A: D3: /<zoneB>/SCHEMA/CONTENT
+    Zone_A->>Zone_A: addAdaptedTrustSchema()
+    Zone_A->>Cons_A: D4: /<zoneA>/ZONE/<zoneB>
+    Zone_A->>Cons_A: D5: /<zoneA>/SCHEMA/SUBSCRIBE
+    Cons_A->>Zone_A: I7: /<zoneA>/SCHEMA/CONTENT
+    Zone_A->>Cons_A: D6: /<zoneA>/SCHEMA/CONTENT
+    Cons_A->>Prod_B: I8: /<zoneB>/<content_name>
+    Prod_B->>Cons_A: D7: /<zoneB>/<content_name>
+    Cons_A->>Cons_A: verifyData()
 ```
