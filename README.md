@@ -225,19 +225,19 @@ sequenceDiagram
     Zone_A->>Zone_B: I2: /<zoneB>/SIGN_REQ/<zoneA>
     Zone_B->>Zone_A: I3: /<zoneA>/SIGN/<zoneB>/KEY/<>?canBePrefix
     Zone_A->>Zone_B: I4: /<zoneB>/KEY/<>?canBePrefix
-    Zone_B->>Zone_A: D1: /<zoneB>/KEY/<>/self/<>
+    Zone_B->>Zone_A: D4: /<zoneB>/KEY/<>/self/<>
     Zone_A->>Zone_A: signCertWithTrustAnchor()
     Zone_A->>Zone_A: addSignedCertTrustSchema()
-    Zone_A->>Zone_B: D2: /<zoneA>/SIGN/<zoneB>/KEY/<>{3,3}  
+    Zone_A->>Zone_B: D3: /<zoneA>/SIGN/<zoneB>/KEY/<>{3,3}  
     Zone_A->>Zone_B: I5: /<zoneB>/SCHEMA/SUBSCRIBE
     Zone_A->>Zone_B: I6: /<zoneB>/SCHEMA/CONTENT
-    Zone_B->>Zone_A: D3: /<zoneB>/SCHEMA/CONTENT
+    Zone_B->>Zone_A: D6: /<zoneB>/SCHEMA/CONTENT
     Zone_A->>Zone_A: addAdaptedTrustSchema()
-    Zone_A->>Cons_A: D4: /<zoneA>/ZONE/<zoneB>
-    Zone_A->>Cons_A: D5: /<zoneA>/SCHEMA/SUBSCRIBE
+    Zone_A->>Cons_A: D1: /<zoneA>/ZONE/<zoneB>
+    Zone_A->>Cons_A: D: /<zoneA>/SCHEMA/SUBSCRIBE
     Cons_A->>Zone_A: I7: /<zoneA>/SCHEMA/CONTENT
-    Zone_A->>Cons_A: D6: /<zoneA>/SCHEMA/CONTENT
+    Zone_A->>Cons_A: D7: /<zoneA>/SCHEMA/CONTENT
     Cons_A->>Prod_B: I8: /<zoneB>/<content_name>
-    Prod_B->>Cons_A: D7: /<zoneB>/<content_name>
+    Prod_B->>Cons_A: D8: /<zoneB>/<content_name>
     Cons_A->>Cons_A: verifyData()
 ```
