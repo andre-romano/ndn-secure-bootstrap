@@ -4,9 +4,9 @@
 // default libraries
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 // ns3 modules
 #include "ns3/adhoc-wifi-mac.h"
@@ -48,18 +48,13 @@ namespace ns3 {
       void addProducers(int n);
       void addConsumers(int n);
 
-      void installAllTrustAnchorApps();
-      void installAllProducerApps();
-      void installAllConsumerApps();
+      void installTrustAnchorApp(double freshness);
+      void installProducerApp(string prefix, double freshness, string payloadSize, uint32_t producerID);
+      void installConsumerApp(string prefix, string lifetime, double pktFreq, string randomize,
+                              uint32_t consumerID);
 
     private:
       void addTrustAnchor();
-
-      void signProducerCertificates(std::shared_ptr<ns3::ApplicationContainer> producerApps);
-
-      void installTrustAnchorApp(double freshness);
-      void installProducerApp(string prefix, double freshness, string payloadSize);
-      void installConsumerApp(string prefix, string lifetime, double pktFreq, string randomize);
 
     private:
       std::string m_zoneName;

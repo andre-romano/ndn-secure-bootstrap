@@ -30,26 +30,8 @@ namespace ns3 {
     void CustomZone::addConsumers(int n) { m_consumers->Create(n); }
     void CustomZone::addProducers(int n) { m_producers->Create(n); }
 
-    void CustomZone::installAllTrustAnchorApps() {
-      // create TRUST ANCHOR and SCHEMA for zone
-      installTrustAnchorApp(2.0);
-    }
-    void CustomZone::installAllProducerApps() {
-      // create PRODUCER for prefix "/test/prefix"
-      installProducerApp("/test/prefix", 2.0, "1480");
-    }
-    void CustomZone::installAllConsumerApps() {
-      // create CONSUMER for prefix "/test/prefix"
-      installConsumerApp("/test/prefix", "1s", 10, "uniform");
-    }
-
-    //////////////////////
-    //     PRIVATE
-    //////////////////////
-
-    void CustomZone::addTrustAnchor() { m_trust_anchors->Create(1); }
-
-    void CustomZone::installConsumerApp(string prefix, string lifetime, double pktFreq, string randomize) {
+    void CustomZone::installConsumerApp(string prefix, string lifetime, double pktFreq, string randomize,
+                                        uint32_t consumerID) {
       auto prefixApp = m_zoneName + prefix;
       NS_LOG_INFO("Installing Consumer App for '" << prefixApp << "' ...");
       // ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
@@ -65,14 +47,14 @@ namespace ns3 {
       consumerHelper.SetAttribute("SchemaPrefix", StringValue(m_schemaPrefix));
       consumerHelper.SetAttribute("ValidatorConf", StringValue(m_validatorConf));
       // set random start time
-      for(auto &consumer : *m_consumers) {
-        Ptr<UniformRandomVariable> start_time = CreateObject<UniformRandomVariable>();
-        // consumer RANDOM start time interval (MIN, MAX)
-        consumerHelper.Install(consumer).Start(Seconds(start_time->GetValue(0.2, 0.75)));
-      }
+      Ptr<UniformRandomVariable> start_time = CreateObject<UniformRandomVariable>();
+      // consumer RANDOM start time interval (MIN, MAX)
+      auto consumerPtr = m_consumers->Get(consumerID);
+      consumerHelper.Install(consumerPtr).Start(Seconds(start_time->GetValue(0.2, 0.75)));
     }
 
-    void CustomZone::installProducerApp(string prefix, double freshness, string payloadSize) {
+    void CustomZone::installProducerApp(string prefix, double freshness, string payloadSize,
+                                        uint32_t producerID) {
       auto prefixApp = m_zoneName + prefix;
       // ndn::AppHelper producerHelper("ns3::ndn::Producer");
       NS_LOG_INFO("Installing Producer App for '" << prefixApp << "' ...");
@@ -84,7 +66,8 @@ namespace ns3 {
       producerHelper.SetAttribute("SignPrefix", StringValue(m_signPrefix));
       producerHelper.SetAttribute("SchemaPrefix", StringValue(m_schemaPrefix));
       producerHelper.SetAttribute("ValidatorConf", StringValue(m_validatorConf));
-      auto producersApps = std::make_shared<ns3::ApplicationContainer>(producerHelper.Install(*m_producers));
+      auto producerPtr = m_producers->Get(producerID);
+      auto producersApps = std::make_shared<ns3::ApplicationContainer>(producerHelper.Install(producerPtr));
       producersApps->Start(Seconds(0.1)); // producers start time
     }
 
@@ -105,6 +88,12 @@ namespace ns3 {
           std::make_shared<ns3::ApplicationContainer>(trustAnchorHelper.Install(*m_trust_anchors));
       trustAnchorApps->Start(Seconds(0.05)); // trust anchors start time
     }
+
+    //////////////////////
+    //     PRIVATE
+    //////////////////////
+
+    void CustomZone::addTrustAnchor() { m_trust_anchors->Create(1); }
 
   } // namespace ndn
 } // namespace ns3

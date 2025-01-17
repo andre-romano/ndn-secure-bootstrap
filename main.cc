@@ -92,11 +92,15 @@ namespace ns3 {
     double nInitialEnergy = 20.0;
     size_t nCsSize = 1;
     size_t n_Forwarders = 1;
+    size_t nNodes = 1;
+    size_t nAppsPerNode = 1;
     cmd.AddValue("nSimDuration", "Simulation duration ", nSimDuration);
     cmd.AddValue("nTraceFile", "Ns2 movement trace file", nTraceFile);
     cmd.AddValue("nInitialEnergy", "Initial energy of the nodes", nInitialEnergy);
     cmd.AddValue("nCsSize", "Content Store size", nCsSize);
     cmd.AddValue("n_Forwarders", "Number of NDN Forwarders", n_Forwarders);
+    cmd.AddValue("nNodes", "Consumer-producer node pairs (nNodes = 1 => 1 consumer + 1 producer)", nNodes);
+    cmd.AddValue("nAppsPerNode", "Number of Consumer/Producer Apps running in each node", nAppsPerNode);
     cmd.Parse(argc, argv);
 
     // parse str commands into enums
@@ -120,8 +124,8 @@ namespace ns3 {
     std::map<string, std::shared_ptr<ndn::CustomZone>> ndnZones;
     // ZONE A => 1 consumer + 1 producer
     std::string zoneName = "/zoneA";
-    ndnZones[zoneName] = std::make_shared<ndn::CustomZone>(zoneName, 1, 1);
-    // ZONE B => 1 consumer + 1 producer
+    ndnZones[zoneName] = std::make_shared<ndn::CustomZone>(zoneName, nNodes, nNodes);
+    // ZONE B => 1 consumer node + 1 producer node
     // zoneName = "/zoneB";
     // ndnZones[zoneName] = std::make_shared<ndn::CustomZone>(zoneName, 1, 1);
 
@@ -182,19 +186,36 @@ namespace ns3 {
     // 6.0. Set up TRUST ANCHOR
     NS_LOG_INFO("Installing Trust Anchor (and Schema) Apps in Zones ...");
     for(const auto &pairNameZone : ndnZones) {
-      pairNameZone.second->installAllTrustAnchorApps();
+      auto zonePtr = pairNameZone.second;
+      zonePtr->installTrustAnchorApp(2.0);
     }
 
     // 6.1. Set up CONSUMER
     NS_LOG_INFO("Installing Consumer Apps in Zones ...");
     for(const auto &pairNameZone : ndnZones) {
-      pairNameZone.second->installAllConsumerApps();
+      auto zonePtr = pairNameZone.second;
+      for(uint32_t nodeId = 0; nodeId < nNodes; nodeId++) {
+        for(uint32_t appId = 0; appId < nAppsPerNode; appId++) {
+          std::string prefixName = "/test/prefix/";
+          prefixName += std::string("node_") + std::to_string(nodeId) + "/";
+          prefixName += std::string("app_") + std::to_string(appId) + "/";
+          zonePtr->installConsumerApp(prefixName, "1s", 10, "uniform", nodeId);
+        }
+      }
     }
 
     // 6.2. Set up PRODUCER
     NS_LOG_INFO("Installing Producer Apps in Zones ...");
     for(const auto &pairNameZone : ndnZones) {
-      pairNameZone.second->installAllProducerApps();
+      auto zonePtr = pairNameZone.second;
+      for(uint32_t nodeId = 0; nodeId < nNodes; nodeId++) {
+        for(uint32_t appId = 0; appId < nAppsPerNode; appId++) {
+          std::string prefixName = "/test/prefix/";
+          prefixName += std::string("node_") + std::to_string(nodeId) + "/";
+          prefixName += std::string("app_") + std::to_string(appId) + "/";
+          zonePtr->installProducerApp(prefixName, 2.0, "1480", nodeId);
+        }
+      }
     }
 
     // 7.1. Simulate link failures (P2P links only)
