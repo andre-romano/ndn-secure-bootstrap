@@ -48,6 +48,12 @@ if [ -z "$NODE_NUM" ]; then
 fi
 export NODE_NUM
 
+if [ -z "$APPS_PER_NODE" ]; then
+    # simulation durantion in seconds
+    APPS_PER_NODE=5
+fi
+export APPS_PER_NODE
+
 if [ -z "$SIM_DURATION" ]; then
     # simulation durantion in seconds
     SIM_DURATION=11
@@ -69,7 +75,7 @@ export MOBILITY_MODEL
 
 if [ -z "$SIM_FILE" ]; then
     # SIM_FILE="sim_ndn_wifi -nSimDuration=${SIM_DURATION} -nNodes=${NODE_NUM}"
-    SIM_FILE="sim_bootsec -nSimDuration=${SIM_DURATION}"
+    SIM_FILE="sim_bootsec -nSimDuration=${SIM_DURATION} -nAppsPerNode=${APPS_PER_NODE}"
 fi
 if [ -z "$GLOBAL_ARGS" ]; then
     GLOBAL_ARGS="RngRun=1"

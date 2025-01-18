@@ -2,13 +2,13 @@
 # set terminal pngcairo size 800,400 enhanced font "Arial,12"
 # set output 'dataIntervals.png'
 set terminal pdfcairo size 6.2,4.0 enhanced font "Arial,16"
-set output 'dataIntervals.pdf'
+set output 'dataIntervals_1_5_norm.pdf'
 set samples 200
 
 # Set labels
 # set title "Row-Stacked Bar Graph" font ",14"
 set xlabel "Quantidade de Produtores" offset 0,0.15 center
-set ylabel "Tempo [ms]" offset -0.5,0 center
+set ylabel "Impacto sobre Tempo de Bootstrap [%]" offset -0.5,0 center
 
 # set styles
 set grid # grade pontilhada
@@ -16,7 +16,7 @@ set format y "%.f"
 
 set key box lc rgb "black"  # Box 
 set key spacing 1.2 width 1.0
-set key inside top right
+set key outside top right
 set key invert vertical Right
 set key autotitle columnheader
 
@@ -35,9 +35,9 @@ set style line 6 lc rgb '#ff7f0e' # Orange
 # Adjust grid and ticks
 set auto x
 set auto y
-# set yrange [0:*]
+set yrange [0:100]
 
 # Plot horizontal stacking
-plot '../../../results/dataIntervals.dat' using 2:xtic(1) ls 2, \
+plot '../../../results/dataIntervals_1_5_norm.dat' using 2:xtic(1) ls 2, \
     for [i=3:5] '' using i:xtic(1) ls i
 

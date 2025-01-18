@@ -1,7 +1,6 @@
 **/ndnSIM
 **/*.cert
 **/*.o
-**/*.dat
 **/*.data
 **/*.log
 **/*.pdf

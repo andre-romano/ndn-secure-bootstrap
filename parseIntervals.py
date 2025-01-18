@@ -1,10 +1,11 @@
 #!/bin/python3
+from statistics import mean, median, stdev, variance
+
 import re
 import fileinput
 import sys
 import os
 import json
-from token import NAME
 
 
 class LogfileParser:
@@ -12,15 +13,55 @@ class LogfileParser:
         # saida json
         self.data = {}
 
+        # key regex
+        self.key_regex = re.compile(
+            r"(.+/KEY/[^/]+)")
+
+        # sign regex
+        self.sign_regex = re.compile(
+            r"(.+/SIGN/.+)")
+
+        # SCHEMA regex
+        self.schema_subs_regex = re.compile(
+            r"(.+/SCHEMA/SUBSCRIBE)")
+        self.schema_cont_regex = re.compile(
+            r"(.+/SCHEMA/CONTENT)")
+
+        # PAYLOAD regex
+        self.payload_regex = re.compile(
+            r"^(/zone[^/]+/test/prefix/node_[0-9]+/app_[0-9]+)$")
+
         # Dicionário para armazenar tempos de envio de Interesse por nó
         self.interest_timestamps = {}
 
-    def getKeyFromCertName(self, name: str):
-        key_regex = re.compile(
-            r"(.+/KEY/[^/]+)")
+    def calculateAvg(self, prefix: str, regex: re.Pattern, nodeData: dict):
+        itemsLen = 0
+        for item, value in nodeData.copy().items():
+            match = regex.search(item)
+            if not match:
+                continue
+            avg = mean(value)
+            if prefix not in nodeData:
+                nodeData[prefix] = avg
+            else:
+                nodeData[prefix] = (nodeData[prefix] + avg)/2.0
+            # remove excess data from file
+            del nodeData[item]
 
+    def calculateAccumulation(self, prefix: str, regex: re.Pattern, nodeData: dict):
+        for item, value in nodeData.copy().items():
+            match = regex.search(item)
+            if not match:
+                continue
+            if prefix not in nodeData:
+                nodeData[prefix] = 0.0
+            nodeData[prefix] += sum(value)
+            # remove excess data from file
+            del nodeData[item]
+
+    def getKeyFromCertName(self, name: str):
         # verificar se é role
-        key_match = key_regex.search(name)
+        key_match = self.key_regex.search(name)
         if not key_match:
             return name
 
@@ -58,7 +99,7 @@ class LogfileParser:
         # adicionar timestamp
         timestamp, node, interest_name = interest_match.groups()
         interest_name = self.getKeyFromCertName(interest_name)
-        print("int match -", timestamp, node, interest_name)
+        # print("int match -", timestamp, node, interest_name)
         if node not in self.interest_timestamps:
             self.interest_timestamps[node] = {}
         self.interest_timestamps[node][interest_name] = float(timestamp)
@@ -76,7 +117,7 @@ class LogfileParser:
         # calcular intervalo (tempo Dados - Interesse)
         timestamp, node, data_name = data_match.groups()
         data_name = self.getKeyFromCertName(data_name)
-        print("data match -", timestamp, node, data_name)
+        # print("data match -", timestamp, node, data_name)
         if node in self.interest_timestamps and data_name in self.interest_timestamps[node]:
             # Calcular intervalo de tempo
             interval = float(timestamp) - \
@@ -95,20 +136,41 @@ class LogfileParser:
             # Remover o Interesse processado
             del self.interest_timestamps[node][data_name]
 
-    def parseLine(self, line):
-        # Match de role type (trustanchor, producer, consumer)
-        self.parseRole(line)
+    def calculateSummations(self, nodeData: dict):
+        self.calculateAccumulation(
+            prefix="/SUM/SIGN",
+            regex=self.sign_regex,
+            nodeData=nodeData)
+        self.calculateAccumulation(
+            prefix="/SUM/KEY",
+            regex=self.key_regex,
+            nodeData=nodeData)
 
-        # Match envio de pacote de Interesse
-        self.parseInterest(line)
-
-        # Match recebimento de pacote de Dados
-        self.parseData(line)
+    def calculateAverages(self, nodeData: dict):
+        self.calculateAvg(
+            prefix="/AVG/SCHEMA/SUBSCRIBE",
+            regex=self.schema_subs_regex,
+            nodeData=nodeData)
+        self.calculateAvg(
+            prefix="/AVG/SCHEMA/CONTENT",
+            regex=self.schema_cont_regex,
+            nodeData=nodeData)
+        self.calculateAvg(
+            prefix="/AVG/PAYLOAD",
+            regex=self.payload_regex,
+            nodeData=nodeData)
 
     def run(self, logfile, jsonfile):
         print(f"Reading logfile ...")
         for line in fileinput.input(logfile):
-            self.parseLine(line)
+            self.parseRole(line)  # role type (trustanchor, producer, consumer)
+            self.parseInterest(line)  # pacote de Interesse
+            self.parseData(line)  # recebimento pacote de Dados
+
+        print(f"Calculating sum / avg ...")
+        for nodeID, nodeData in self.data.items():
+            self.calculateSummations(nodeData)
+            self.calculateAverages(nodeData)
 
         print(f"\n---  Result  ---")
         json_dump = json.dumps(self.data, indent=2, sort_keys=True)
