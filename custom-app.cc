@@ -211,7 +211,8 @@ namespace ns3 {
 
       // Note that datas send out by the app will not be sent back to the app !
       NS_LOG_DEBUG("Receiving Data packet: " << data->getName()
-                                             << " - KeyLocator: " << data->getSignature().getKeyLocator());
+                                             << " - KeyLocator: " << data->getSignature().getKeyLocator()
+                                             << " - Size: " << data->wireEncode().size());
       if(m_shouldValidateData) {
         NS_LOG_DEBUG("Validating Data ... ");
         m_validator->validate(*data, MakeCallback(&CustomApp::OnDataValidated, this),
@@ -379,20 +380,20 @@ namespace ns3 {
 
     void CustomApp::sendInterest(std::shared_ptr<ndn::Interest> interest) {
       // to create real wire encoding
-      interest->wireEncode();
+      auto &block = interest->wireEncode();
 
       // Call trace (for logging purposes), send interest, schedule next interests
-      NS_LOG_DEBUG("Sending Interest packet: " << *interest);
+      NS_LOG_DEBUG("Sending Interest packet: " << *interest << " - Size: " << block.size());
       m_transmittedInterests(interest, this, m_face);
       m_appLink->onReceiveInterest(*interest);
     }
 
     void CustomApp::sendData(std::shared_ptr<ndn::Data> data) {
       // to create real wire encoding
-      data->wireEncode();
+      auto &block = data->wireEncode();
 
       // Call trace (for logging purposes), send data packet
-      NS_LOG_INFO("Sending Data packet: " << data->getName());
+      NS_LOG_INFO("Sending Data packet: " << data->getName() << " - Size: " << block.size());
       // NS_LOG_INFO("Signature: " << data->getSignature().getSignatureInfo());
       m_transmittedDatas(data, this, m_face);
       m_appLink->onReceiveData(*data);

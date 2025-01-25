@@ -1,14 +1,23 @@
+# reset gnuplot env
+reset
+
+# filename
+filename = 'dataSizeSum_1_5_norm'
+
+out_file = filename . '.pdf'
+data_file = '../../../results/' . filename . '.dat'
+
 # Set terminal and output file
 # set terminal pngcairo size 800,400 enhanced font "Arial,12"
 # set output 'dataIntervals.png'
 set terminal pdfcairo size 6.2,4.0 enhanced font "Arial,16"
-set output 'dataIntervals_1_5_norm.pdf'
+set output out_file
 set samples 200
 
 # Set labels
 # set title "Row-Stacked Bar Graph" font ",14"
 set xlabel "Quantidade de Produtores" offset 0,0.15 center
-set ylabel "Impacto sobre Tempo de Bootstrap [%]" offset -0.5,0 center
+set ylabel "Consumo de Largura de Banda [%]" offset -0.5,0 center
 
 # set styles
 set grid # grade pontilhada
@@ -20,8 +29,10 @@ set key outside top right
 set key invert vertical Right
 set key autotitle columnheader
 
-set style data histogram
+set style data histogram 
 set style histogram rowstacked
+# set style histogram cluster gap 1
+
 set style fill solid border -1
 set boxwidth 0.50
 
@@ -38,6 +49,6 @@ set auto y
 set yrange [0:100]
 
 # Plot horizontal stacking
-plot '../../../results/dataIntervals_1_5_norm.dat' using 2:xtic(1) ls 2, \
-    for [i=3:5] '' using i:xtic(1) ls i
+scale(x) = x 
+plot for [i=2:5] data_file using ( scale(column(i)) ):xtic(1) ls i
 
