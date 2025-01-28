@@ -42,5 +42,5 @@ set yrange [0:100]
 
 # Plot horizontal stacking
 plot '../../../results/dataIntervals_10_50_norm.dat' using 2:xtic(1) ls 2, \
-    for [i=3:5] '' using i:xtic(1) ls i
+    for [i=3:4] '' using i:xtic(1) ls i
 

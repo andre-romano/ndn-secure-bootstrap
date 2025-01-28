@@ -25,7 +25,7 @@ set format y "%.f"
 
 set key box lc rgb "black"  # Box 
 set key spacing 1.2 width 1.0
-set key inside top left
+set key outside top right
 set key invert vertical Right
 set key autotitle columnheader
 

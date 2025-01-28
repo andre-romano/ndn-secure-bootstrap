@@ -16,7 +16,7 @@ set samples 200
 
 # Set labels
 # set title "Row-Stacked Bar Graph" font ",14"
-set xlabel "Tipo de Pacote de Dados" offset 0,0.15 center
+set xlabel "Quantidade de Produtores" offset 0,0.15 center
 set ylabel "Tamanho Médio do Pacote [B]" offset -0.5,0 center
 
 # set styles
@@ -25,10 +25,9 @@ set format y "%.f"
 
 set key box lc rgb "black"  # Box 
 set key spacing 1.2 width 1.0
-set key inside top left
+set key outside top right
 set key invert vertical Right
 set key autotitle columnheader
-unset key
 
 set style data histogram 
 # set style histogram rowstacked

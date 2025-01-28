@@ -19,7 +19,7 @@ set format y "%.f"
 
 set key box lc rgb "black"  # Box 
 set key spacing 1.2 width 1.0
-set key inside top left
+set key outside top right
 set key invert vertical Right
 set key autotitle columnheader
 
@@ -42,5 +42,5 @@ set auto y
 
 # Plot horizontal stacking
 plot '../../../results/dataIntervals_1_5.dat' using 2:xtic(1) ls 2, \
-    for [i=3:5] '' using i:xtic(1) ls i
+    for [i=3:4] '' using i:xtic(1) ls i
 

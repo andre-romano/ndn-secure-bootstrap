@@ -8,6 +8,7 @@
     - [INSTALL Dependencies - Instructions](#install-dependencies---instructions)
       - [INSTALL - NDNSIM](#install---ndnsim)
       - [INSTALL - BonnMotion mobility generator](#install---bonnmotion-mobility-generator)
+      - [INSTALL - Additional NPM, GNUPLOT and Python dependencies](#install---additional-npm-gnuplot-and-python-dependencies)
       - [Setup](#setup)
       - [Run experiments](#run-experiments)
 - [NDN Intertrust Design](#ndn-intertrust-design)
@@ -90,6 +91,12 @@ ln -sf ~/bonnmotion-3.0.1/bin/bm ~/.local/bin
 chmod +rx ~/.local/bin/*
 echo "export PATH=\$PATH:\$HOME/.local/bin" >> ~/.bash_aliases
 . ~/.bash_aliases
+```
+
+#### INSTALL - Additional NPM, GNUPLOT and Python dependencies
+Execute the following:
+```bash
+./install_dependencies.sh
 ```
 
 #### Setup

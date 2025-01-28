@@ -1,11 +1,18 @@
 # reset gnuplot env
 reset
 
+filename = 'dataIntervals_1_5_norm'
+
+output_file = filename . '.pdf'
+input_file  = filename . '.dat'
+
+input_file  = '../../../results/' . input_file
+
 # Set terminal and output file
 # set terminal pngcairo size 800,400 enhanced font "Arial,12"
 # set output 'dataIntervals.png'
 set terminal pdfcairo size 6.2,4.0 enhanced font "Arial,16"
-set output 'dataIntervals_1_5_norm.pdf'
+set output output_file
 set samples 200
 
 # Set labels
@@ -41,6 +48,5 @@ set auto y
 set yrange [0:100]
 
 # Plot horizontal stacking
-plot '../../../results/dataIntervals_1_5_norm.dat' using 2:xtic(1) ls 2, \
-    for [i=3:5] '' using i:xtic(1) ls i
+plot for [i=2:4] input_file using (column(i)):xtic(1) ls i    
 

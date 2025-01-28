@@ -7,7 +7,6 @@
 **/*.png
 **/*.jpg
 **/*.eps
-**/*.txt
 **/*.gz
 **/*.bak
 **/*.ns_movements
