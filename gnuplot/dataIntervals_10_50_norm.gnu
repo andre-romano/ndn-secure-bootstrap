@@ -10,8 +10,8 @@ set samples 200
 
 # Set labels
 # set title "Row-Stacked Bar Graph" font ",14"
-set xlabel "Quantidade de Produtores" offset 0,0.15 center
-set ylabel "Impacto sobre Tempo de Bootstrap [%]" offset -0.5,0 center
+set xlabel "Producers" offset 0,0.15 center
+set ylabel "Bootstrap Time Impact [%]" offset -0.5,0 center
 
 # set styles
 set grid # grade pontilhada
