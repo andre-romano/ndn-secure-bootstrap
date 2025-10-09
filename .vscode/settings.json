@@ -94,6 +94,25 @@
     "C_Cpp.clang_format_style": "file:./.vscode/.clang-format",
     "C_Cpp.clang_format_fallbackStyle": "LLVM",
     "cSpell.words": [
-        "iequals"
+        "andre",
+        "bonnmotion",
+        "bootsec",
+        "castxml",
+        "civilpolice",
+        "digifort",
+        "goocanvas",
+        "iequals",
+        "Intertrust",
+        "Interzone",
+        "intrazone",
+        "Intrazone",
+        "libboost",
+        "libgirepository",
+        "libsqlite",
+        "NDNSIM",
+        "pybindgen",
+        "pygccxml",
+        "pygraphviz",
+        "setuptools"
     ]
 }

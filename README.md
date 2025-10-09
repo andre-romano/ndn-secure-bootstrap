@@ -20,6 +20,17 @@
       - [2.3. Producer Certificate Signing](#23-producer-certificate-signing)
       - [2.4. Update Trust Schema](#24-update-trust-schema)
     - [3. Bootstrapping Overview](#3-bootstrapping-overview)
+  - [Interzone communication](#interzone-communication)
+    - [1. Assumptions](#1-assumptions-1)
+    - [2. Bootstrapping](#2-bootstrapping-1)
+      - [2.1. Acquire Zone B self-signed trust anchor (``Tb``)](#21-acquire-zone-b-self-signed-trust-anchor-tb)
+      - [2.2. Sign Zone B trust anchor](#22-sign-zone-b-trust-anchor)
+      - [2.3. Acquire Zone B validation rules](#23-acquire-zone-b-validation-rules)
+      - [2.4. Adapt validation rules](#24-adapt-validation-rules)
+      - [2.5. Include adapted Zone B rules in trust schema](#25-include-adapted-zone-b-rules-in-trust-schema)
+      - [2.5. Send updated Zone A trust schema to interested parties](#25-send-updated-zone-a-trust-schema-to-interested-parties)
+    - [3. Bootstrapping Overview](#3-bootstrapping-overview-1)
+    - [4. Example (study case)](#4-example-study-case)
 
 
 This project can be run in either one of the following methods:
@@ -39,7 +50,7 @@ cd ./scratch/sim_bootsec
 ./run.sh
 ```
 
-The ```run.sh``` has some simulation paramters that can be changed, please check the file.
+The ```run.sh``` has some simulation parameters that can be changed, please check the file.
 
 ## Option 2 - Run project inside Ubuntu VM
 
@@ -169,15 +180,15 @@ When producer starts, it creates its PKI (private and public keys), as well as i
 
 ####  2.4. Update Trust Schema
 1) The Zone Controller adds the Producer signed certificate to the trust schema validation rules.
-2) The Zone Controller issues an update notification to interested parties (Consumers and Producers). We assume that interested parties have previously issued a subscribe Interest (``/<zone>/SCHEMA/SUBSCRIBE``) for the trust schema.
+2) The Zone Controller issues an update notification to interested parties (Consumers and Producers). We assume that interested parties have previously issued a subscribe Interest (``/<zone>/SCHEMA/SUBSCRIBE/<zone>``) for the trust schema.
    - **Packet**: DATA
-   - **Name**: ``/<zone>/SCHEMA/SUBSCRIBE``
+   - **Name**: ``/<zone>/SCHEMA/SUBSCRIBE/<zone>``
 3) Interested parties request the updated trust schema from Zone Controller
    - **Packet**: INTEREST
-   - **Name**: ``/<zone>/SCHEMA/CONTENT``
+   - **Name**: ``/<zone>/SCHEMA/CONTENT/<zone>``
 4) Zone Controller replies with the updated trust schema
    - **Packet**: DATA
-   - **Name**: ``/<zone>/SCHEMA/CONTENT``
+   - **Name**: ``/<zone>/SCHEMA/CONTENT/<zone>``
 
 ### 3. Bootstrapping Overview
 These following sequence diagram summarizes the bootstrapping process:
@@ -187,7 +198,7 @@ sequenceDiagram
     participant Producer
     participant Zone Controller
 
-    Producer->>Zone Controller: I1: /<zone>/SCHEMA/SUBSCRIBE    
+    Producer->>Zone Controller: I1: /<zone>/SCHEMA/SUBSCRIBE/<zone>    
     Producer->>Producer: createIdentityPKI()
     Producer->>Zone Controller: I2: /<zone>/AUTH/<producer_identity>
     Zone Controller->>Producer: I3: /<zone>/CHG/<producer_identity>
@@ -199,7 +210,188 @@ sequenceDiagram
     Zone Controller->>Zone Controller: signCertWithTrustAnchor()
     Zone Controller->>Zone Controller: addSignedCertTrustSchema()
     Zone Controller->>Producer: D4: /<zone>/SIGN/<producer_identity>/KEY/<>{3,3}
-    Zone Controller->>Producer: D1: /<zone>/SCHEMA/SUBSCRIBE    
-    Producer->>Zone Controller: I6: /<zone>/SCHEMA/CONTENT
-    Zone Controller->>Producer: D6: /<zone>/SCHEMA/CONTENT    
+    Zone Controller->>Producer: D1: /<zone>/SCHEMA/SUBSCRIBE/<zone>    
+    Producer->>Zone Controller: I6: /<zone>/SCHEMA/CONTENT/<zone>
+    Zone Controller->>Producer: D6: /<zone>/SCHEMA/CONTENT/<zone>    
+```
+
+## Interzone communication
+
+### 1. Assumptions
+No additional assumptions, other than the intrazone ones.
+
+### 2. Bootstrapping
+To allow an NDN App of a Zone A to consume data produced in an external Zone B (interzone communication), the Zone a controller need to:
+1) Acquire Zone B self-signed trust anchor (``Tb``)
+2) Sign Zone B trust anchor, creating ``Tb'``, which acts as a ``Proof of Zone Recognition``
+3) Acquire Zone B validation rules (external trust schema)
+4) Adapt validation rules such that KeyLocator certificate chain terminates in ``Ta`` (trust anchor of Zone A) via ``Tb'`` 
+5) Include adapted Zone B rules in trust schema
+6) Send updated Trust Schema to interested parties, both Consumers and Producers
+
+These steps are described in further details in the following sections.
+
+####  2.1. Acquire Zone B self-signed trust anchor (``Tb``)
+1) **KEY (Interest)**: The Zone A controller requests Zone B trust anchor.
+   - **Packet**: INTEREST
+   - **Name**: ``/<zoneB>/KEY/<>{3,3}``
+2) **KEY (Data)**: Zone B sends trust anchor self-signed certificate. 
+   - **Packet**: DATA
+   - **Name**: ``/<zoneB>/KEY/<>{3,3}``
+
+####  2.2. Sign Zone B trust anchor
+1) Zone A signs ``Tb`` to create ``Tb'`` (Proof of Zone Recognition - PZR). 
+   - **Tb'** = ``/<zoneA>/<zoneB>/KEY/<>{3,3}``
+2) Add rule to point ``Tb'`` as a certificate signed by ``Ta`` (Zone A trust anchor)
+   - **Certificate Name**: ``/<zoneA>/<zoneB>/KEY/<>{3,3}``
+   - **KeyLocator**: ``/<zoneA>/KEY/<>{3,3}``
+
+``Tb'`` will be used to replace Zone B validation rules that terminated in ``Tb``, such that Data packet validation rules always terminate in ``Ta`` (trust anchor of Zone A).
+
+####  2.3. Acquire Zone B validation rules
+1) **SCHEMA (Interest)**: The Zone A controller requests Zone B trust schema.
+   - **Packet**: INTEREST
+   - **Name**: ``/<zoneB>/SCHEMA/CONTENT/<zoneA>``
+2) **SCHEMA (Data)**: Zone B sends external trust schema, according to what Data packets it wants Zone A entities to consume (similar to Access Control List in IP). Zone B can also send its trust schema in its entirety, if no ACL control is needed.
+   - **Packet**: DATA
+   - **Name**: ``/<zoneB>/SCHEMA/CONTENT/<zoneA>``
+
+
+####  2.4. Adapt validation rules 
+
+Change ``KeyLocator`` in the received trust schema rules that have ``Tb`` as trust anchor to `Tb'`. 
+
+####  2.5. Include adapted Zone B rules in trust schema
+
+Include adapted rules inside Zone A trust schema. 
+
+####  2.5. Send updated Zone A trust schema to interested parties
+
+1) The Zone Controller issues an update notification to interested parties (Consumers and Producers). We assume that interested parties have previously issued a subscribe Interest (``/<zoneA>/SCHEMA/<zoneB>/SUBSCRIBE``) for the trust schema.
+   - **Packet**: DATA
+   - **Name**: ``/<zoneA>/SCHEMA/SUBSCRIBE/<zoneA>/``
+2) Interested parties request the updated trust schema from Zone Controller
+   - **Packet**: INTEREST
+   - **Name**: ``/<zoneA>/SCHEMA/CONTENT/<zoneA>``
+3) Zone Controller replies with the updated trust schema
+   - **Packet**: DATA
+   - **Name**: ``/<zoneA>/SCHEMA/CONTENT/<zoneA>``
+
+### 3. Bootstrapping Overview
+These following sequence diagram summarizes the bootstrapping process:
+
+```mermaid
+sequenceDiagram
+    participant Zone A entities
+    participant Zone A
+    participant Zone B
+
+    
+    Zone A entities->>Zone A: I1: /<zoneA>/SCHEMA/SUBSCRIBE/<zoneA>
+    Zone A->>Zone B: I2: /<zoneB>/KEY/<>{3,3}   
+    Zone B->>Zone A: D2: /<zoneB>/KEY/<>{3,3}   
+    Zone A->>Zone A: Tb' = signTrustAnchor(Tb)
+    Zone A->>Zone A: addProofZoneRecognition(Tb')
+    Zone A->>Zone B: I3: /<zoneB>/SCHEMA/CONTENT/<zoneA>
+    Zone B->>Zone A: D3: /<zoneB>/SCHEMA/CONTENT/<zoneA>
+    Zone A->>Zone A: rules' = adaptValidationRules(rules)
+    Zone A->>Zone A: includeInTrustSchema(rules')
+    Zone A->>Zone A entities: D4: /<zoneA>/SCHEMA/SUBSCRIBE/<zoneA>
+    Zone A entities->>Zone A: I4: /<zoneA>/SCHEMA/CONTENT/<zoneA>
+    Zone A->>Zone A entities: D4: /<zoneA>/SCHEMA/CONTENT/<zoneA>
+```
+
+### 4. Example (study case)
+Given the following scenario:
+- **Zone A**: ``/digifort``
+- **Zone B**: ``/civilpolice``
+    
+Suppose that:
+- All packets are signed directly by the trust anchor of `/civilpolice`.
+- All packets follow the naming schema below:
+
+**Naming schema**:
+  - **Packet names**: `/civilpolice/<sensor>/<address>/<id>`
+    - **E.g.**: `/civilpolice/camera/elm_street/001`
+  - **KeyLocators**: `/civilpolice/KEY/01/self/v=01`
+
+Suppose that `/digifort` applications need to acquire images from a given camera, to identify possible thieves or malicious actors in the city. In that case, ``/digifort`` needs to acquire validation rules of `/civilpolice` zone, as illustrated below:
+
+```mermaid
+
+sequenceDiagram
+    participant Digifort Apps
+    participant /digifort
+    participant /civilpolice
+
+    Digifort Apps->>/digifort: I1: /digifort/SCHEMA/SUBSCRIBE/digifort
+    /digifort->>/civilpolice: I2: /civilpolice/KEY/01/self/v=01
+    /civilpolice->>/digifort: D2: /civilpolice/KEY/01/self/v=01
+    /digifort->>/digifort: /digifort/civilpolice/KEY/01/self/v=01 = signTrustAnchor(/civilpolice/KEY/01/self/v=01)
+    /digifort->>/digifort: addProofZoneRecognition(/digifort/civilpolice/KEY/01/self/v=01)
+    /digifort->>/civilpolice: I3: /civilpolice/SCHEMA/CONTENT/digifort
+    /civilpolice->>/digifort: D3: /civilpolice/SCHEMA/CONTENT/digifort
+    /digifort->>/digifort: rules' = adaptValidationRules(/civilpolice/SCHEMA/CONTENT/digifort)
+    /digifort->>/digifort: includeInTrustSchema(rules')
+    /digifort->>Digifort Apps: D4: /digifort/SCHEMA/SUBSCRIBE/digifort
+    Digifort Apps->>/digifort: I4: /digifort/SCHEMA/CONTENT/digifort
+    /digifort->>Digifort Apps: D4: /digifort/SCHEMA/CONTENT/digifort
+```
+
+```python
+def addProofZoneRecognition(certificate) -> rule:
+   # modify zone trust schema to include the following rule
+   return """
+   rule
+   {
+      id Proof of zone recognition validation rule
+      for data
+      filter
+      {
+         type name
+         regex ^<digifort><civilpolice><KEY><>{1,3}$
+      }
+      checker
+      {
+         type customized
+         sig-type rsa-sha256
+         key-locator
+         {
+               type name
+               regex "^<civilpolice><KEY><>{1,3}$"
+         }
+      }
+   }
+   """
+
+def adaptValidationRules(external_schema) -> adapted_schema:
+   # modify validation rules to point to /digifort/civilpolice KeyLocator
+   return """
+   rule
+   {
+      id Civil police adapted rule (to terminate in Tb')
+      for data
+      filter
+      {
+         type name
+         regex ^<civilpolice>[^<KEY>]*$
+      }
+      checker
+      {
+         type customized
+         sig-type rsa-sha256
+         key-locator
+         {
+               type name
+               regex "^<digifort><civilpolice><KEY><>{1,3}$"
+         }
+      }
+   }
+   """
+
+def includeInTrustSchema(adapted_schema) -> None:
+   # modify /digifort trust schema to include the adapted validation rules
+   schema = digifort_schema.read() # read current /digifort schema
+   schema.extend(adapted_schema) # add adapted rules to schema
+   digifort_schema.write(schema) # save schema to disk
 ```
