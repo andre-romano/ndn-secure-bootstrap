@@ -294,7 +294,6 @@ sequenceDiagram
     Zone A->>Zone A: addProofZoneRecognition(Tb')
     Zone A->>Zone B: I3: /<zoneB>/SCHEMA/CONTENT/<zoneA>
     Zone B->>Zone A: D3: /<zoneB>/SCHEMA/CONTENT/<zoneA>
-    Zone A->>Zone A: rules' = adaptValidationRules(rules)
     Zone A->>Zone A: includeInTrustSchema(rules')
     Zone A->>Zone A entities: D4: /<zoneA>/SCHEMA/SUBSCRIBE/<zoneA>
     Zone A entities->>Zone A: I4: /<zoneA>/SCHEMA/CONTENT/<zoneA>
@@ -327,11 +326,10 @@ sequenceDiagram
     Digifort Apps->>/digifort: I1: /digifort/SCHEMA/SUBSCRIBE/digifort
     /digifort->>/civilpolice: I2: /civilpolice/KEY/01/self/v=01
     /civilpolice->>/digifort: D2: /civilpolice/KEY/01/self/v=01
-    /digifort->>/digifort: /digifort/civilpolice/KEY/01/self/v=01 = signTrustAnchor(/civilpolice/KEY/01/self/v=01)
-    /digifort->>/digifort: addProofZoneRecognition(/digifort/civilpolice/KEY/01/self/v=01)
+    /digifort->>/digifort: /civilpolice/KEY/01/digifort/v=01 = signTrustAnchor(/civilpolice/KEY/01/self/v=01)
+    /digifort->>/digifort: addProofZoneRecognition(/civilpolice/KEY/01/digifort/v=01)
     /digifort->>/civilpolice: I3: /civilpolice/SCHEMA/CONTENT/digifort
     /civilpolice->>/digifort: D3: /civilpolice/SCHEMA/CONTENT/digifort
-    /digifort->>/digifort: rules' = adaptValidationRules(/civilpolice/SCHEMA/CONTENT/digifort)
     /digifort->>/digifort: includeInTrustSchema(rules')
     /digifort->>Digifort Apps: D4: /digifort/SCHEMA/SUBSCRIBE/digifort
     Digifort Apps->>/digifort: I4: /digifort/SCHEMA/CONTENT/digifort
@@ -349,7 +347,7 @@ def addProofZoneRecognition(certificate) -> rule:
       filter
       {
          type name
-         regex ^<digifort><civilpolice><KEY><>{1,3}$
+         regex ^<civilpolice><KEY><><digifort><>{0,1}$
       }
       checker
       {
@@ -358,40 +356,14 @@ def addProofZoneRecognition(certificate) -> rule:
          key-locator
          {
                type name
-               regex "^<civilpolice><KEY><>{1,3}$"
+               regex "^<digifort><KEY><>{1,3}$"
          }
       }
    }
    """
 
-def adaptValidationRules(external_schema) -> adapted_schema:
-   # modify validation rules to point to /digifort/civilpolice KeyLocator
-   return """
-   rule
-   {
-      id Civil police adapted rule (to terminate in Tb')
-      for data
-      filter
-      {
-         type name
-         regex ^<civilpolice>[^<KEY>]*$
-      }
-      checker
-      {
-         type customized
-         sig-type rsa-sha256
-         key-locator
-         {
-               type name
-               regex "^<digifort><civilpolice><KEY><>{1,3}$"
-         }
-      }
-   }
-   """
-
-def includeInTrustSchema(adapted_schema) -> None:
-   # modify /digifort trust schema to include the adapted validation rules
-   schema = digifort_schema.read() # read current /digifort schema
-   schema.extend(adapted_schema) # add adapted rules to schema
-   digifort_schema.write(schema) # save schema to disk
+def includeInTrustSchema(adapted_schema) -> None:   
+   schema = digifort_schema.read() # read schema
+   schema.extend(adapted_schema) # add rules
+   digifort_schema.write(schema) # save schema
 ```
