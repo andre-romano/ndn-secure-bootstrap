@@ -60,13 +60,13 @@ export SIM_DURATION
 
 if [ -z "$MAP_SIZE" ]; then
     # map size used by BonnMotion mobility models
-    MAP_SIZE=10
+    MAP_SIZE=100
 fi
 export MAP_SIZE
 
 if [ -z "$MOBILITY_MODEL" ]; then
     # default mobility model used (available ones are Static, RPGM, RandomWalk, RandomWaypoint)    
-    MOBILITY_MODEL=Static
+    MOBILITY_MODEL=RandomWalk
     # to change mobility model parameters, please check the ".param" files
 fi
 export MOBILITY_MODEL
