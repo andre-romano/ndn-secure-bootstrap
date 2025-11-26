@@ -10,7 +10,7 @@ RUN apt-get update && \
     chmod 755 -R $JDK_PATH && \
     ln -sf $JDK_PATH/bin/java  /usr/bin && \
     ln -sf $JDK_PATH/bin/javac /usr/bin && \
-    wget -O bonnmotion.zip https://sys.cs.uos.de/bonnmotion/src/bonnmotion-3.0.1.zip && \
+    wget -O bonnmotion.zip https://bonnmotion.sys.cs.uos.de/src/bonnmotion-3.0.1.zip && \
     unzip bonnmotion.zip && \
     rm bonnmotion.zip && \
     export BONNMOTION_PATH=$(ls -d /opt/bonnmotion-*) && \
